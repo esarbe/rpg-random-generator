@@ -1,8 +1,9 @@
 package chars.random
 
-import cats.Monad
+import cats._
+import cats.implicits._
 import chars.random.Generators.randomInt
-import io.rbricks.itemized.{IndexedItemized, ItemizedIndex}
+import enumeratum._
 
 object implicits {
 
@@ -23,10 +24,10 @@ object implicits {
     }
   }
 
-  def randomEnum[T <: IndexedItemized](implicit ev: ItemizedIndex[T]): Random[T] =
+  def randomEnum[T <: EnumEntry](implicit ev: Enum[T]): Random[T] =
     for {
-      seed <- randomInt
-      index = Math.abs(seed) % ev.indexMap.keys.size
-    } yield ev.indexMap.values.toList(index)
+      rand <- randomInt
+      index = Math.abs(rand) % ev.values.length
+    } yield ev.values(index)
 
 }
