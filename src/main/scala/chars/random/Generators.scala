@@ -11,4 +11,14 @@ object Generators {
 
   def randomInt: Random[Int] = next(32)
 
+  def randomDouble: Random[Double] = {
+    import cats.implicits._
+    import chars.random.implicits._
+
+    (next(26) |@| next(27)).map {
+      case (first, second) =>
+        ((first << 27).toLong + second.toLong).toDouble * 1.1102230246251565E-16D
+    }
+  }
+
 }
