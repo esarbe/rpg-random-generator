@@ -2,7 +2,7 @@ package chars.random
 
 import cats._
 import cats.implicits._
-import chars.random.Generators.randomInt
+import chars.random.Generators._
 import enumeratum._
 
 object implicits {
@@ -29,5 +29,25 @@ object implicits {
       rand <- randomInt
       index = Math.abs(rand) % ev.values.length
     } yield ev.values(index)
+
+  def randomEnumWithWeights[T](toWeight: T => Double)(implicit ev: Enum[T]): Random[T] = {
+    val weights = ev.values.map(toWeight)
+    val sum = weights.sum
+    val normalizedWeights = weights.map(_ / sum)
+
+    for {
+      limit <- randomDouble
+      absLimit = Math.abs(limit)
+    } yield {
+      var index = 0
+      var sum = 0.0
+      while (sum < absLimit) {
+        sum = sum + normalizedWeights(index)
+        index += 1
+      }
+
+      ev.values(index)
+    }
+  }
 
 }
