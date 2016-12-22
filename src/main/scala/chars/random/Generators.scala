@@ -15,10 +15,20 @@ object Generators {
     import cats.implicits._
     import chars.random.implicits._
 
-    (next(26) |@| next(27)).map {
-      case (first, second) =>
-        ((first << 27).toLong + second.toLong).toDouble * 1.1102230246251565E-16D
+
+    (next(26) |@| next(27)).map { case (a, b) =>
+      ((a.toLong << 27) + b) / (1.toLong << 53).toDouble
     }
   }
 
+  def chooseDouble(h: Double, l: Double): Random[Double] = {
+    import cats.implicits._
+    import chars.random.implicits._
+
+    randomDouble.map { x =>
+      val (ll, hh) = if(h < l) (h, l) else (l, h)
+      val diff = hh - ll
+      ll + x * diff
+    }
+  }
 }

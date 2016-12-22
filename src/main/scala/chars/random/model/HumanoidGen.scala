@@ -19,7 +19,7 @@ object HumanoidGen extends Random[Humanoid] {
 
   val randomAge = randomEnumWithWeights[Humanoid.Age]{
     case Humanoid.Age.Young => 2
-    case Humanoid.Age.Middleaged => 3
+    case Humanoid.Age.Middleaged => 0.4
     case Humanoid.Age.Old => 1
     case Humanoid.Age.Ancient => 0.5
   }

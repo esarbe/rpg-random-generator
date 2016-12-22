@@ -30,13 +30,13 @@ object implicits {
       index = Math.abs(rand) % ev.values.length
     } yield ev.values(index)
 
-  def randomEnumWithWeights[T](toWeight: T => Double)(implicit ev: Enum[T]): Random[T] = {
+  def randomEnumWithWeights[T <: EnumEntry](toWeight: T => Double)(implicit ev: Enum[T]): Random[T] = {
     val weights = ev.values.map(toWeight)
     val sum = weights.sum
     val normalizedWeights = weights.map(_ / sum)
 
     for {
-      limit <- randomDouble
+      limit <- chooseDouble(0d, 1.0d)
       absLimit = Math.abs(limit)
     } yield {
       var index = 0
