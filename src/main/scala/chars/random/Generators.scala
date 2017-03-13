@@ -2,23 +2,29 @@ package chars.random
 
 object Generators {
 
+  import cats.implicits._
+  import chars.random.implicits._
+
   def next(bits: Int): Random[Int] = { seed =>
-    val newSeed = (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1)
-    val next = (seed >>> (48 - bits))
+    val newSeed = seed * 25214903917L + 11L & 281474976710655L
+    val next = newSeed >>> 48 - bits
 
     (newSeed, next.toInt)
   }
 
   def randomInt: Random[Int] = next(32)
 
-  def randomDouble: Random[Double] = {
-    import cats.implicits._
-    import chars.random.implicits._
+  val randomLong: Random[Long] = for {
+    a <- next(32)
+    b <- next(32)
+  } yield (a.toLong << 32) + b.toLong
 
 
-    (next(26) |@| next(27)).map { case (a, b) =>
-      ((a.toLong << 27) + b) / (1.toLong << 53).toDouble
-    }
+  val randomDouble = for {
+    a <- next(26)
+    b <- next(27)
+  } yield {
+    ((a.toLong << 27) + b.toLong).toDouble / (1L << 53).toDouble
   }
 
   def chooseDouble(h: Double, l: Double): Random[Double] = {
@@ -31,4 +37,6 @@ object Generators {
       ll + x * diff
     }
   }
+
+
 }
