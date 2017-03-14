@@ -36,14 +36,13 @@ object implicits {
     val normalizedWeights = weights.map(_ / sum)
 
     for {
-      limit <- chooseDouble(0d, 1.0d)
-      absLimit = Math.abs(limit)
+      limit <- randomDouble
     } yield {
-      var index = 0
+      var index = -1
       var sum = 0.0
-      while (sum < absLimit) {
-        sum = sum + normalizedWeights(index)
+      while (sum < limit) {
         index += 1
+        sum = sum + normalizedWeights(index)
       }
 
       ev.values(index)
