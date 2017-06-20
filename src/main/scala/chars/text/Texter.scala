@@ -4,12 +4,17 @@ import chars.model.Humanoid
 import chars.model.Humanoid.{Age, Race, Sex}
 import simulacrum.typeclass
 
-@typeclass trait StringPrinter[T] {
-  def generate(t: T): String
+object Texter
+
+trait Description
+case class Node(title: String, descriptions: Set[Description]) extends Description
+case class Leaf(title: String, description: String) extends Description
+
+@typeclass trait DescriptionBuilder[T] {
+  def generate(t: T): Description
 }
 
-object HumanoidStringPrinter extends StringPrinter[Humanoid] {
-
+object DescriptionBuilders {
   implicit val ageToString: Age => String = {
     case Age.Young => "young"
     case Age.Ancient => "ancient"
@@ -30,25 +35,32 @@ object HumanoidStringPrinter extends StringPrinter[Humanoid] {
     case Sex.Male => "male"
     case Sex.Indeterminate => ""
   }
+}
 
-  implicit def printer[T](implicit f: T => String) = new StringPrinter[T] {
-    def generate(t: T): String = f(t)
+object HumanoidDescriptionBuilder extends DescriptionBuilder[Humanoid] {
+
+  def buildDescription[T: DescriptionBuilder](t: T): Description = {
+    implicitly[DescriptionBuilder[T]].generate(t)
   }
 
   def humanoidDescription(
      implicit
-     ad: StringPrinter[Age],
-     rd: StringPrinter[Race],
-     sd: StringPrinter[Sex]): StringPrinter[Humanoid] = new StringPrinter[Humanoid] {
-    override def generate(humanoid: Humanoid): String = {
+     ad: DescriptionBuilder[Age],
+     rd: DescriptionBuilder[Race],
+     sd: DescriptionBuilder[Sex]
+  ): DescriptionBuilder[Humanoid] = new DescriptionBuilder[Humanoid] {
+    override def generate(humanoid: Humanoid): Description = {
       import humanoid._
 
-      s"""
-         |A ${ad.generate(age)} ${sd.generate(sex)} ${rd.generate(race)}.
-       """.stripMargin
+      val descriptions =
+        Set(
+          buildDescription(age),
+          buildDescription(race),
+          buildDescription(sex))
+
+      Node(Humanoid.getClass.getSimpleName, descriptions)
     }
   }
 
-  override def generate(t: Humanoid): String = humanoidDescription.generate(t)
+  override def generate(t: Humanoid): Description = humanoidDescription.generate(t)
 }
-

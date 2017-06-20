@@ -4,6 +4,8 @@ addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.fu
 
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.0"
 
+//libraryDependencies +=  "org.scalanlp" %% "breeze" % "0.12"
+
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 
 libraryDependencies += "org.typelevel" %% "cats" % "0.7.2" withSources()
