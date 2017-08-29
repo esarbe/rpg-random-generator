@@ -9,7 +9,7 @@ object implicits {
 
   implicit val randomMonad: Monad[Random] = new Monad[Random] {
     override def map[A, B](fa: Random[A])(f: (A) => B): Random[B] = {
-      flatMap(fa)( a => pure(f(a)) )
+      flatMap(fa)(a => pure(f(a)))
     }
 
     override def flatMap[A, B](fa: Random[A])(f: (A) => Random[B]): Random[B] = { seed =>
@@ -30,8 +30,12 @@ object implicits {
       index = Math.abs(rand) % ev.values.length
     } yield ev.values(index)
 
-  def randomEnumWithWeights[T <: EnumEntry](toWeight: T => Double)(implicit ev: Enum[T]): Random[T] = {
-    val weights = ev.values.map(toWeight)
+
+  def randomEnumWithWeights[T <: EnumEntry](toWeight: T => Double)(implicit ev: Enum[T]): Random[T] =
+    randomValuesWithWeights(ev.values, toWeight)
+
+  def randomValuesWithWeights[T](values: Seq[T], toWeight: T => Double): Random[T] = {
+    val weights = values.map(toWeight)
     val sum = weights.sum
     val normalizedWeights = weights.map(_ / sum)
 
@@ -45,7 +49,7 @@ object implicits {
         sum = sum + normalizedWeights(index)
       }
 
-      ev.values(index)
+      values(index)
     }
   }
 
