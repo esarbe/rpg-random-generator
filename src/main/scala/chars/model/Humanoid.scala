@@ -3,6 +3,14 @@ package chars.model
 import chars.model.Humanoid.Body.Athleticism
 import enumeratum._
 
+sealed trait CategorizedValue extends EnumEntry
+object CategorizedValue extends Enum[CategorizedValue] {
+  val values = findValues
+  object Small extends CategorizedValue
+  object Medium extends CategorizedValue
+  object Large extends CategorizedValue
+}
+
 object Humanoid {
 
   sealed trait Race extends EnumEntry
@@ -30,14 +38,6 @@ object Humanoid {
     object Middleaged extends Age
     object Old extends Age
     object Ancient extends Age
-  }
-
-  sealed trait CategorizedValue extends EnumEntry
-  object CategorizedValue extends Enum[CategorizedValue] {
-    val values = findValues
-    object Small extends CategorizedValue
-    object Medium extends CategorizedValue
-    object Large extends CategorizedValue
   }
 
   object Body {
@@ -85,4 +85,10 @@ object Humanoid {
     }
   }
 }
-case class Humanoid(sex: Humanoid.Sex, age: Humanoid.Age, race: Humanoid.Race, body: Humanoid.Body, head: Humanoid.Head)
+case class Humanoid(
+  sex: Humanoid.Sex,
+  age: Humanoid.Age,
+  race: Humanoid.Race,
+  body: Humanoid.Body,
+  head: Humanoid.Head
+)
