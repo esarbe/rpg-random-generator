@@ -8,7 +8,7 @@ object HumanoidGen extends Random[Humanoid] {
   import cats.implicits._
   import chars.random.implicits._
 
-  val randomValueCategory = randomEnum[Humanoid.CategorizedValue]
+  val randomValueCategory = randomEnum[chars.model.CategorizedValue]
 
   val randomEyeColor = randomEnumWithWeights[Humanoid.Face.Eyes.Eye.Color] {
     case Humanoid.Face.Eyes.Eye.Color.Brown => 2
