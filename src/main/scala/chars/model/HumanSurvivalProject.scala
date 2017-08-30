@@ -4,7 +4,9 @@ import java.io.File
 
 object HumanSurvivalProject extends App {
 
-  type HMM = Map[Seq[Char], Int]
+  type State = Seq[Char]
+  type HMM = Map[State, Map[State, Int]]
+  type Count = Int
 
   def buildHMM(source: File): HMM = {
     val lines = io.Source.fromFile(source).map(_.toLower)
