@@ -29,13 +29,11 @@ object HumanSurvivalProject extends App {
     }
   }
 
-  def generateFromHMM(hmm: HMM)(char: Char, seq: String)(seed: Long): String = {
-    val weights: Map[Char, Double] = hmm
-      .toList
-      .filter { _._1.headOption.contains(char) }
-      .map { case (key, value) => (key.tail.head, value) }
-      .groupBy { _._1 }
-      .mapValues { _.map(_._2).sum.toDouble }
+  def generateFromHMM(hmm: HMM)(current: State)(seed: Long): State = {
+
+    val char = Seq(current.last)
+
+    val weights: Map[State, Double] = hmm.apply(char).mapValues(_.toDouble)
 
     val possibleNexts = weights.keys.toSeq
 
