@@ -54,16 +54,16 @@ object HumanSurvivalProject extends App {
 
     val (nextSeed, nextChar) = rand.apply(seed)
 
-    if (nextChar == '\n') seq
-    else generateFromHMM(hmm)(nextChar, seq + nextChar)(nextSeed)
+    if (nextChar == Seq('\n')) current
+    else generateFromHMM(hmm)(current ++ nextChar)(nextSeed)
   }
 
-  val hmm = buildHMM(new File("./src/main/resources/names/german-female.txt"))
+  val hmm = buildHMM(new File("./src/main/resources/names/german-male.txt"))
 
 
-  val generated: String = generateFromHMM(hmm)('\n', "")(util.Random.nextLong)
+  val generated: String = generateFromHMM(hmm)(Seq('\n'))(util.Random.nextLong).mkString
 
-  print(generated)
+  println(s"Name: $generated")
 
   def printlnRaw(s: String): Unit = {
     println(s.flatMap {
