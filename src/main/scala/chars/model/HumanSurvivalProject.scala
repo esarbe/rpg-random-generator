@@ -9,7 +9,11 @@ object HumanSurvivalProject extends App {
   type Count = Int
 
   def buildHMM(source: File): HMM = {
-    val lines = io.Source.fromFile(source).map(_.toLower)
+    val lines =
+      io.Source
+        .fromFile(source)
+        .getLines
+        .map(s => s"\n$s\n".toLowerCase)
 
     val history = 2
     type State = Map[Seq[Char], Int]
