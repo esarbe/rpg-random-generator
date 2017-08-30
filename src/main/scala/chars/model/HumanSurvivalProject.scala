@@ -19,11 +19,14 @@ object HumanSurvivalProject extends App {
         .getLines
         .map(s => s"\n$s\n".toLowerCase)
 
-    val history = 2
-    type State = Map[Seq[Char], Int]
-    val init = Map.empty[Seq[Char], Int].withDefaultValue(0)
+    def buildNGramTransitions(n: Int, line: State): Seq[(State, State)] = {
+      val transitions = line.sliding(n).foldLeft(List.empty[(State, State)]) {
+        case (acc, init :+ last) =>
+          (init, Seq(last)) :: acc
+      }
 
-    lines.sliding(history, 1).foldLeft(init) { case (acc, curr) =>
+      transitions
+    }
 
     val nGramTransitions: Seq[(State, State)] = for {
       line <- lines.toSeq
@@ -31,6 +34,11 @@ object HumanSurvivalProject extends App {
       transitions <- buildNGramTransitions(ns, line)
     } yield transitions
 
+    nGramTransitions.groupBy(_._1).mapValues { values =>
+      values
+        .map(_._2)
+        .groupBy(s => s)
+        .mapValues(_.size)
     }
   }
 
