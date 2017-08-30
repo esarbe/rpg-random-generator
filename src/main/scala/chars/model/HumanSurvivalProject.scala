@@ -2,6 +2,10 @@ package chars.model
 
 import java.io.File
 
+import chars.model.HumanSurvivalProject.State
+
+import scala.collection.immutable
+
 object HumanSurvivalProject extends App {
 
   type State = Seq[Char]
@@ -21,11 +25,12 @@ object HumanSurvivalProject extends App {
 
     lines.sliding(history, 1).foldLeft(init) { case (acc, curr) =>
 
-      if (curr.size < history) acc // don't consider state changes with small history
-      else {
-        val count = acc(curr)
-        acc.updated(curr, count + 1)
-      }
+    val nGramTransitions: Seq[(State, State)] = for {
+      line <- lines.toSeq
+      ns <- Range(2, line.length)
+      transitions <- buildNGramTransitions(ns, line)
+    } yield transitions
+
     }
   }
 
