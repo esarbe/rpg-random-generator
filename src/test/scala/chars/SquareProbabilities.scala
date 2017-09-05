@@ -40,6 +40,34 @@ object SquareProbabilities extends App {
     print("\n")
   }
 
+  (1 to maxDice).foreach { i =>
+
+    val numEvents = successesByDieCount(i).values.sum
+    val total = successesByDieCount(i).map { case (successes, events) => successes * events }.sum.toDouble
+
+    print(s"$i;${total / numEvents};")
+
+    val cumulativeSuccesses =
+      successesByDieCount(i).toList.sortBy(_._1).reverse.foldLeft((0, List.empty[(Int, Int)])) {
+        case ((accTotal, accu), (key, value)) =>
+
+          val newAccTotal = accTotal + value
+          val newEntry = (key, newAccTotal)
+
+          (newAccTotal, newEntry :: accu)
+      }._2.toMap
+
+
+    (0 to maxSuccesses).foreach { s =>
+
+      val is = cumulativeSuccesses.getOrElse(s, 0)
+      print(s"${is.toDouble / numAttempts};")
+    }
+    print("\n")
+  }
+
+
+
   def roll(n: Int): Int = {
 
     val success: Int => Boolean = _ > 2
