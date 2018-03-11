@@ -39,7 +39,7 @@ object DescriptionBuilders {
 object HumanoidDescriptionBuilder {
 
   def buildDescriptionBuilder[A](label: String)(implicit f: A => String): DescriptionBuilder[A] = new DescriptionBuilder[A]{
-    override def generate(t: A): Description =Leaf(label, f(t))
+    override def generate(t: A): Description = Leaf(label, f(t))
   }
 
   private def buildDescription[T: DescriptionBuilder](t: T): Description = {
@@ -58,7 +58,6 @@ object HumanoidDescriptionBuilder {
       val descriptions =
         Seq(
           buildDescription(age),
-          buildDescription(race),
           buildDescription(sex))
 
       Node(Humanoid.getClass.getSimpleName, descriptions)
