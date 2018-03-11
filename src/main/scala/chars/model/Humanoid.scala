@@ -11,7 +11,24 @@ object CategorizedValue extends Enum[CategorizedValue] {
   object Large extends CategorizedValue
 }
 
-object Humanoid {
+trait Culture {
+  trait ProfessionLike
+
+}
+
+trait Entity {
+
+  case class Name(first: String)
+
+}
+
+object Humanoid extends Entity {
+
+  sealed trait Profession extends EnumEntry
+  object Profession extends Enum[Profession] {
+    val values = findValues
+
+  }
 
   sealed trait Race extends EnumEntry
   object Race extends Enum[Race] {
@@ -88,7 +105,6 @@ object Humanoid {
 case class Humanoid(
   sex: Humanoid.Sex,
   age: Humanoid.Age,
-  race: Humanoid.Race,
   body: Humanoid.Body,
   head: Humanoid.Head
 )

@@ -9,11 +9,12 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 object CharacterGenerator extends App {
-  import cats.implicits._
-  import cats._
+
+  import cats.Functor
 
   import chars.random.Random
   import chars.random.implicits._
+  import cats.implicits._
 
   import DescriptionBuilders._
   import HumanoidDescriptionBuilder._
@@ -21,6 +22,7 @@ object CharacterGenerator extends App {
   val sd: DescriptionBuilder[Sex] = buildDescriptionBuilder("sex")
   val ad: DescriptionBuilder[Age] = buildDescriptionBuilder("age")
   val rd: DescriptionBuilder[Race] = buildDescriptionBuilder("race")
+  //val pd: DescriptionBuilder[Profession] = buildDescriptionBuilder("profession")
   val hd: DescriptionBuilder[Humanoid] = humanoidDescriptionBuilder(ad, rd, sd)
 
   val seed = util.Random.nextLong
@@ -34,7 +36,6 @@ object CharacterGenerator extends App {
       (1 to indentation).map(_ => '\t').mkString + s"l - $label:" +
       descriptions.map(pd(_, indentation + 1)).mkString("\n")
   }
-
 
   println(pd(desc))
 
