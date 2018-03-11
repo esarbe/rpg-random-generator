@@ -7,6 +7,7 @@ object HumanoidGen extends Random[Humanoid] {
 
   import cats.implicits._
   import chars.random.implicits._
+  import chars.random.Generators._
 
   val randomValueCategory = randomEnum[chars.model.CategorizedValue]
 
@@ -27,13 +28,13 @@ object HumanoidGen extends Random[Humanoid] {
   val randomBodyHeight = randomValueCategory.map(Humanoid.Body.Height)
   val randomBodyWeight = randomValueCategory.map(Humanoid.Body.Weight)
   val randomAthleticism = randomValueCategory.map(Humanoid.Body.Athleticism)
-  val randomBody = (randomBodyHeight |@| randomBodyWeight |@| randomAthleticism).map(Humanoid.Body.apply)
+  val randomBody = (randomBodyHeight, randomBodyWeight,  randomAthleticism).mapN(Humanoid.Body.apply)
   val randomFaceShape = randomEnum[Humanoid.Face.Shape]
   val randomEyeShape = randomEnum[Humanoid.Face.Eyes.Eye.Shape]
 
-  val randomEyes = (randomEyeColor |@| randomEyeShape).map(Humanoid.Face.Eyes.Eye.apply)
-  val randomFace = (randomFaceShape |@| randomEyes).map(Humanoid.Face.apply)
-  val randomHead = (randomFace |@| randomValueCategory).map(Humanoid.Head.apply)
+  val randomEyes = (randomEyeColor, randomEyeShape).mapN(Humanoid.Face.Eyes.Eye.apply)
+  val randomFace = (randomFaceShape, randomEyes).mapN(Humanoid.Face.apply)
+  val randomHead = (randomFace, randomValueCategory).mapN(Humanoid.Head.apply)
   val randomSex = randomEnumWithWeights[Humanoid.Sex] {
     case Humanoid.Sex.Male => 1.2
     case Humanoid.Sex.Female => 0.8
@@ -42,7 +43,7 @@ object HumanoidGen extends Random[Humanoid] {
 
   val randomRace = randomEnum[Humanoid.Race]
 
-  val randomPerson = (randomSex |@| randomAge |@| randomRace |@| randomBody |@| randomHead).map(Humanoid.apply)
+  val randomPerson = (randomSex, randomAge, randomBody, randomHead).mapN(Humanoid.apply)
 
 
   override def apply(seed: Long): (Long, Humanoid) = randomPerson(seed)
