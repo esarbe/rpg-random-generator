@@ -1,9 +1,11 @@
 package chars.random
 
+import enumeratum.{Enum, EnumEntry}
+
 object Generators {
 
-  import cats.implicits._
   import chars.random.implicits._
+  import cats.implicits._
 
   def next(bits: Int): Random[Int] = { seed =>
     val newSeed = seed * 25214903917L + 11L & 281474976710655L
@@ -27,16 +29,45 @@ object Generators {
     ((a.toLong << 27) + b.toLong).toDouble / (1L << 53).toDouble
   }
 
-  def chooseDouble(h: Double, l: Double): Random[Double] = {
-    import cats.implicits._
-    import chars.random.implicits._
-
+  def chooseDouble(low: Double, high: Double): Random[Double] = {
     randomDouble.map { x =>
-      val (ll, hh) = if(h < l) (h, l) else (l, h)
+      val (ll, hh) = if(high < low) (high, low) else (low, high)
       val diff = hh - ll
       ll + x * diff
     }
   }
 
+  def randomEnum[T <: EnumEntry](implicit ev: Enum[T]): Random[T] =
+    for {
+      rand <- randomInt
+      index = Math.abs(rand) % ev.values.length
+    } yield ev.values(index)
 
+
+  def randomEnumWithWeights[T <: EnumEntry](
+      toWeight: T => Double
+  )(implicit ev: Enum[T]): Random[T] =
+    randomValuesWithWeights(ev.values, toWeight)
+
+  def randomValuesWithWeights[T](
+      values: Seq[T], toWeight: T => Double
+  ): Random[T] = {
+
+    val weights = values.map(toWeight)
+    val sum = weights.sum
+    val normalizedWeights = weights.map(_ / sum)
+
+    for {
+      limit <- randomDouble
+    } yield {
+      var index = -1
+      var sum = 0.0
+      while (sum < limit) {
+        index += 1
+        sum = sum + normalizedWeights(index)
+      }
+
+      values(index)
+    }
+  }
 }
