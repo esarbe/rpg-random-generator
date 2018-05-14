@@ -13,7 +13,7 @@ object CharacterGenerator extends App {
   import cats.Functor
 
   import chars.random.Random
-  import chars.random.implicits._
+  import chars.random.CatsInstances._
   import cats.implicits._
 
   import DescriptionBuilders._

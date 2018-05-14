@@ -6,7 +6,7 @@ import chars.random.Random
 object HumanoidGen extends Random[Humanoid] {
 
   import cats.implicits._
-  import chars.random.implicits._
+  import chars.random.CatsInstances._
   import chars.random.Generators._
 
   val randomValueCategory = randomEnum[chars.model.CategorizedValue]

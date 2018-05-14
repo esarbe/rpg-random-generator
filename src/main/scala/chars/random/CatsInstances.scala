@@ -1,13 +1,9 @@
 package chars.random
 
 import cats._
-import cats.implicits._
-import chars.random.Generators._
-import enumeratum._
-
 import scala.annotation.tailrec
 
-object implicits {
+object CatsInstances {
 
   implicit val randomMonad: Monad[Random] = new Monad[Random] {
 

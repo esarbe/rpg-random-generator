@@ -4,7 +4,7 @@ import enumeratum.{Enum, EnumEntry}
 
 object Generators {
 
-  import chars.random.implicits._
+  import chars.random.CatsInstances._
   import cats.implicits._
 
   def next(bits: Int): Random[Int] = { seed =>
