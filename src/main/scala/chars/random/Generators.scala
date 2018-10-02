@@ -37,17 +37,25 @@ object Generators {
     }
   }
 
-  def randomEnum[T <: EnumEntry](implicit ev: Enum[T]): Random[T] =
+
+  def oneOf[T](values: T*): Random[T] =
     for {
       rand <- randomInt
-      index = Math.abs(rand) % ev.values.length
-    } yield ev.values(index)
+      index = Math.abs(rand) % values.length
+    } yield values.apply(index)
+
+
+  def randomEnum[T <: EnumEntry](implicit ev: Enum[T]): Random[T] =
+    oneOf(ev.values:_*)
 
 
   def randomEnumWithWeights[T <: EnumEntry](
       toWeight: T => Double
   )(implicit ev: Enum[T]): Random[T] =
     randomValuesWithWeights(ev.values, toWeight)
+
+
+  def static[T](value: T): Random[T] = seed => (seed, value)
 
   def randomValuesWithWeights[T](
       values: Seq[T], toWeight: T => Double
