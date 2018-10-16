@@ -1,8 +1,7 @@
 package chars
 
-import org.scalatest.FunSuite
 
-import scala.collection.immutable
+import scala.annotation.tailrec
 
 object SquareProbabilities extends App {
 
@@ -67,19 +66,15 @@ object SquareProbabilities extends App {
   }
 
 
-
-  def roll(n: Int): Int = {
-
+  @tailrec
+  def roll(n: Int, initialSuccesses: Int = 0): Int = {
     val success: Int => Boolean = _ > 2
 
     val throws = (1 to n).map(_ => scala.util.Random.nextInt(6))
 
-    val successes = throws.count(success)
+    val successes = initialSuccesses + throws.count(success)
     val numRethrows = throws.count(_ == 5)
-    val rethrowSuccesses =
-      if (numRethrows > 0) roll(numRethrows)
-      else 0
-
-    successes +  rethrowSuccesses
+    if (numRethrows > 0) roll(numRethrows, successes)
+    else successes
   }
 }
