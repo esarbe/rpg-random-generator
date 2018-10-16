@@ -4,8 +4,11 @@ import enumeratum.{Enum, EnumEntry}
 
 sealed trait Culture extends EnumEntry
 object Culture extends Enum[Culture] {
+
   val values = findValues
-  object Earth extends Culture
-  object Belt extends Culture
-  object Mars extends Culture
+  case object German extends Culture
+  case object USEnglish extends Culture
+  case object Greek extends Culture
+  case object Swahili extends Culture
+  case object Chinese extends Culture
 }

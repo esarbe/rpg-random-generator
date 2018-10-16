@@ -1,50 +1,100 @@
 package chars.random.model
 
-import chars.model.Humanoid
-import chars.random.Random
+import chars.random.{Generator, Random}
+import chars.model._
+import chars.model.human.{Age, Head}
+import chars.model.human.face.Eyes
 
-object HumanoidGen extends Random[Humanoid] {
+object HumanoidGen extends Random[Human] {
 
   import cats.implicits._
   import chars.random.CatsInstances._
-  import chars.random.Generators._
+  import chars.random.Generator._
 
   val randomValueCategory = randomEnum[chars.model.CategorizedValue]
 
-  val randomEyeColor = randomEnumWithWeights[Humanoid.Face.Eyes.Eye.Color] {
-    case Humanoid.Face.Eyes.Eye.Color.Brown => 2
-    case Humanoid.Face.Eyes.Eye.Color.Blue => 1
-    case Humanoid.Face.Eyes.Eye.Color.Hazel => 0.5
-    case Humanoid.Face.Eyes.Eye.Color.Green => 0.2
+  val randomEyeColor = randomEnumWithWeights[human.face.eye.Color] {
+    case human.face.eye.Color.Brown => 7
+    case human.face.eye.Color.Blue => 1
+    case human.face.eye.Color.Hazel => 0.5
+    case human.face.eye.Color.Green => 0.2
+    case human.face.eye.Color.Grey => 0.1
   }
 
-  val randomAge = randomEnumWithWeights[Humanoid.Age]{
-    case Humanoid.Age.Young => 2
-    case Humanoid.Age.Middleaged => 0.4
-    case Humanoid.Age.Old => 1
-    case Humanoid.Age.Ancient => 0.5
+  val randomAge = randomDouble.map(i => Age(i * 120 + 14))
+
+  val randomBodyHeight: Random[body.Height] = randomValueCategory.map(body.Height)
+  val randomBodyWeight: Random[body.Weight] = randomValueCategory.map(body.Weight)
+  val randomAthleticism: Random[body.Athleticism] = randomValueCategory.map(body.Athleticism)
+  val randomBody = for {
+    height <- randomBodyHeight
+    weight <- randomBodyWeight
+    athleticism <- randomAthleticism
+  } yield Body(height, weight, athleticism)
+
+
+  val randomFaceShape = randomEnum[human.face.Shape]
+  val randomEyeShape = randomEnum[human.face.eye.Shape]
+
+  val randomEye =
+    for {
+      eyeColor <- randomEyeColor
+      eyeShape <- randomEyeShape
+    } yield human.face.Eye(eyeColor, eyeShape)
+
+  val randomSameEyes =
+    for {
+      eye <- randomEye
+    } yield human.face.Eyes.SameEyes(eye)
+
+
+  val randomDifferentEyes =
+    for {
+      leftEye <- randomEye
+      rightEye <- randomEye
+    } yield human.face.Eyes.DifferentEyes(leftEye, rightEye)
+
+
+  val randomEyes =
+    Generator.oneOf[Random[Eyes]](randomDifferentEyes, randomSameEyes).flatten
+
+  val randomFace =
+    for {
+      shape <- randomFaceShape
+      eyes <- randomEyes
+    } yield human.Face(shape, eyes)
+
+  val randomHead =
+    for {
+      face <- randomFace
+      size <- randomValueCategory
+    } yield human.Head(face, size)
+
+  val randomSex = randomEnumWithWeights[Sex] {
+    case Sex.Male => 1.1
+    case Sex.Female => 0.9
+    case Sex.Indeterminate => 0.1
   }
 
-  val randomBodyHeight = randomValueCategory.map(Humanoid.Body.Height)
-  val randomBodyWeight = randomValueCategory.map(Humanoid.Body.Weight)
-  val randomAthleticism = randomValueCategory.map(Humanoid.Body.Athleticism)
-  val randomBody = (randomBodyHeight, randomBodyWeight,  randomAthleticism).mapN(Humanoid.Body.apply)
-  val randomFaceShape = randomEnum[Humanoid.Face.Shape]
-  val randomEyeShape = randomEnum[Humanoid.Face.Eyes.Eye.Shape]
+  val randomHuman = for {
+    sex <- randomSex
+    age <- randomAge
+    body <- randomBody
+    head <-  randomHead
+  } yield Human(sex, age, body, head)
 
-  val randomEyes = (randomEyeColor, randomEyeShape).mapN(Humanoid.Face.Eyes.Eye.apply)
-  val randomFace = (randomFaceShape, randomEyes).mapN(Humanoid.Face.apply)
-  val randomHead = (randomFace, randomValueCategory).mapN(Humanoid.Head.apply)
-  val randomSex = randomEnumWithWeights[Humanoid.Sex] {
-    case Humanoid.Sex.Male => 1.2
-    case Humanoid.Sex.Female => 0.8
-    case Humanoid.Sex.Indeterminate => 0.1
-  }
+  def buildGenerator(
+      randomSex: Random[Sex] = randomSex,
+      randomAge: Random[Age] = randomAge,
+      randomBody: Random[Body] = randomBody,
+      randomHead: Random[Head] = randomHead
+  ) : Random[Human] =
+    for {
+      sex <- randomSex
+      age <- randomAge
+      body <- randomBody
+      head <-  randomHead
+    } yield Human(sex, age, body, head)
 
-  val randomRace = randomEnum[Humanoid.Race]
-
-  val randomPerson = (randomSex, randomAge, randomBody, randomHead).mapN(Humanoid.apply)
-
-
-  override def apply(seed: Long): (Long, Humanoid) = randomPerson(seed)
+  override def apply(seed: Long): (Long, Human) = randomHuman(seed)
 }

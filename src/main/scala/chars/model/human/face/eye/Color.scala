@@ -6,8 +6,9 @@ sealed trait Color extends EnumEntry
 object Color extends Enum[Color] {
   val values = findValues
 
-  object Brown extends Color
-  object Blue extends Color
-  object Hazel extends Color
-  object Green extends Color
+  case object Brown extends Color
+  case object Blue extends Color
+  case object Hazel extends Color
+  case object Green extends Color
+  case object Grey extends Color
 }

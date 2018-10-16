@@ -7,7 +7,7 @@ object CatsInstances {
 
   implicit val randomMonad: Monad[Random] = new Monad[Random] {
 
-    override def flatMap[A, B](fa: Random[A])(f: (A) => Random[B]): Random[B] = { seed =>
+    override def flatMap[A, B](fa: Random[A])(f: A => Random[B]): Random[B] = { seed =>
       val (nextSeed, value) = fa(seed)
       f(value)(nextSeed)
     }
@@ -22,7 +22,7 @@ object CatsInstances {
       def rec(a: A, f: A => Random[Either[A, B]], seed: Long): (Long, B) = {
         val (nextSeed, value) = f(a)(seed)
         value match {
-          case Left(a) => rec(a, f, nextSeed)
+          case Left(nextA) => rec(nextA, f, nextSeed)
           case Right(b) => (nextSeed, b)
         }
       }

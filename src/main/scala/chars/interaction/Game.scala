@@ -1,84 +1,73 @@
 package chars.interaction
-import cats.implicits._
 
 object RunGame extends App {
+  val greedo = new r.game.GreedyPlayer { override def toString = "greedo"}
+  val greedo2 = new r.game.GreedyPlayer { override def toString = "greedo2"}
+  val fairo = new r.game.CooperatingPlayer { override def toString = "fairo" }
+  val fairo2 = new r.game.CooperatingPlayer { override def toString = "fairo2" }
+
   val r = new Round {
     val game = PrisonersDilemma
   }
 
-  val greedo = new GreedyPlayer { override def toString() = "greedo"}
-  val greedo2 = new GreedyPlayer { override def toString() = "greedo2"}
-  val fairo = new CooperatingPlayer { override def toString = "fairo" }
-  val fairo2 = new CooperatingPlayer { override def toString = "fairo2" }
-
   val participants = Set(greedo, greedo2, fairo, fairo2)
 
-  val payoffs = r.run(participants)
+  val matchups = participants.toList.combinations(2)
 
-  println(s"po: $payoffs")
+  val f = matchups.collect { case List(left, right) =>
+      val g = ??? //r.run(left, right)
+  }
+
+  //val payoffs = r.run(participants)
+
+  //println(s"po: $payoffs")
 }
 
 trait Game {
-  type Action
+
+  sealed trait Action extends Product with Serializable
+  object Action {
+    case object Defect extends Action
+    case object Cooperate extends Action
+  }
+
   type Payoff = Double
 
-  def actions: Set[Action]
-  def evaluate(actions: Seq[Action]): Action => Payoff
-}
-
-trait Participant {
-  def apply(game: Game, participants: Set[Participant]): game.Action
-}
-
-trait CategoricalPlayer extends Participant {
-  override def apply(game: Game, participants: Set[Participant]): game.Action = {
-    val everyoneDoesIt = game.actions.map { action =>
-      val ifEveryOneDoes: game.Action => game.Payoff = game.evaluate(participants.toSeq.map(_ => action))
-      (action, ifEveryOneDoes(action))
-    }.toSeq.sortBy(_._2)
-
-    everyoneDoesIt.reverse.head._1
+  trait Participant {
+    def apply(other: Participant): Action
   }
+
+  def evaluate(actions: Seq[Action]): Action => Double
 }
 
-trait GreedyPlayer extends Participant {
-  override def apply(game: Game, participants: Set[Participant]): game.Action = game.actions.head
-}
-
-trait CooperatingPlayer extends Participant {
-  override def apply(game: Game, participants: Set[Participant]): game.Action = game.actions.last
-}
 
 trait Round {
   val game: Game
 
-  def run(participants: Set[Participant]): Participant => Game#Payoff = {
 
-  val actionsByParticipant =
-    (participants zip participants)
-      .toMap
-      .mapValues { _.apply(game, participants)  }
-
-  val payoffForAction = game.evaluate(actionsByParticipant.values.toSeq)
-
-  actionsByParticipant.mapValues(payoffForAction)
-  }
 }
 
 
 object PrisonersDilemma extends Game {
 
-  sealed trait Action extends Product with Serializable
-  private object Action {
-    case object Defect extends Action
-    case object Cooperate extends Action
+  def run(left: Participant, right: Participant): Participant => Double = {
+
+    val leftAction = left.apply(right)
+    val rightAction = right.apply(left)
+
+    val actionsByParticipant = Map(left-> leftAction, right -> rightAction)
+
+    val payoffForAction = evaluate(actionsByParticipant.values.toSeq)
+
+    actionsByParticipant.mapValues(payoffForAction)
   }
 
-  import Action._
 
-  val actions = Set(Action.Defect, Action.Cooperate)
+  case class Outcome(participant: Participant, action: Action, payoff: Payoff)
 
-  def evaluate(actions: Seq[Action]): Action => Payoff = {
+  def evaluate(actions: Seq[Action]): Action => Double = {
+    import Action._
+
     val defectors = actions.count(_ == Defect) / actions.size.toDouble
 
     {
@@ -86,4 +75,13 @@ object PrisonersDilemma extends Game {
       case Cooperate => -1 + 2 * defectors
     }
   }
+
+  trait GreedyPlayer extends Participant {
+    override def apply(other: Participant): Action = Action.Defect
+  }
+
+  trait CooperatingPlayer extends Participant {
+    override def apply(other: Participant): Action = Action.Cooperate
+  }
+
 }

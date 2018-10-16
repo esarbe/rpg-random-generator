@@ -22,9 +22,13 @@ object ConsoleInterpreter extends Console[IO]{
     IO { Console.println(s) }
 }
 
-class PromptConsoleInterpreter[F[_]: FlatMap](console: Console[F]) extends Prompt[F] {
+
+class PromptConsoleInterpreter[F[_]: FlatMap](console: Console[F]) extends Prompt[F] with Console[F] {
   import cats.syntax.flatMap._
   import cats.syntax.functor._
+
+  override def printLine(s: String): F[Unit] = console.printLine(s)
+  override def readLine: F[String] = console.readLine
 
   override def prompt(s: String): F[String] =
     for {

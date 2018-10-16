@@ -11,7 +11,6 @@ object HiddenMarkovModel {
   type HiddenMarkovModel = Map[State, Map[State, Int]]
   type Count = Int
 
-
   def buildNGramTransitions(n: Int, line: State): Seq[(State, State)] = {
     val transitions = line.sliding(n).foldLeft(List.empty[(State, State)]) {
       case (acc, init :+ last) =>
@@ -57,7 +56,7 @@ object HiddenMarkovModel {
         val char = Seq(current.last)
         val weights: Map[State, Double] = model(char).mapValues(_.toDouble)
         val possibleNexts = weights.keys.toSeq
-        val rand = chars.random.Generators.randomValuesWithWeights(possibleNexts, weights.apply)
+        val rand = chars.random.Generator.randomValuesWithWeights(possibleNexts, weights.apply)
         val (nextSeed, nextChar) = rand(seed)
 
         if (nextChar == Seq('\n')) current

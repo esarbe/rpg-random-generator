@@ -2,7 +2,7 @@ package chars.random
 
 import enumeratum.{Enum, EnumEntry}
 
-object Generators {
+object Generator {
 
   import chars.random.CatsInstances._
   import cats.implicits._
@@ -55,7 +55,7 @@ object Generators {
     randomValuesWithWeights(ev.values, toWeight)
 
 
-  def static[T](value: T): Random[T] = seed => (seed, value)
+  def constant[T](value: T): Random[T] = seed => (seed, value)
 
   def randomValuesWithWeights[T](
       values: Seq[T], toWeight: T => Double

@@ -5,6 +5,7 @@ import enumeratum.{Enum, EnumEntry}
 sealed trait Shape extends EnumEntry
 object Shape extends Enum[Shape] {
   val values = findValues
-  object Oval extends Shape
-  object Round extends Shape
+
+  case object Oval extends Shape
+  case object Round extends Shape
 }
