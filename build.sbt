@@ -14,7 +14,9 @@ libraryDependencies += "org.typelevel" %% "cats-effect" % "0.5" withSources()
 
 libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.4" % "test"
 
-libraryDependencies += "com.beachape" %% "enumeratum" % "1.5.2"
+libraryDependencies += "com.beachape" %% "enumeratum" % "1.5.12"
+
+libraryDependencies += "com.monovore" %% "decline" % "0.5.0"
 
 libraryDependencies += "com.github.mpilquist" %% "simulacrum" % "0.10.0"
 
