@@ -2,14 +2,15 @@ package chars.app
 
 import cats.effect.IO
 import cats.implicits._
+import chars.app
 import chars.app.CharacterCreator.Input.GeneratorActionRequested
 import chars.app.text.PersonDescriptionBuilder
-import chars.app.ui.PromptConsoleInterpreter
+import chars.app.ui.{PromptConsoleInterpreter, TextInterface}
 import chars.model._
 import chars.random.CatsInstances._
 import chars.random.model.HumanoidGen
 import chars.random.{Generator, Random}
-import chars.text.Description
+import chars.text.{Description, DescriptionPrinter}
 import chars.text.Description._
 import enumeratum._
 
@@ -20,10 +21,6 @@ import scala.util.Try
 
 
 object CharacterCreator {
-  // mvp:
-  //  - main loop with cmd
-  //  - command to generate character, option for sex
-  //  - command to exit generator
 
   sealed trait GeneratorAction
   case class GenerateCharacter(sex: Sex, culture: Culture) extends GeneratorAction
@@ -40,39 +37,18 @@ object CharacterCreator {
 
   val prompt = new PromptConsoleInterpreter[IO](ui.ConsoleInterpreter)
 
-  def selectEnumPrompt[E <: EnumEntry](enum: Enum[E]): IO[E] = {
-    val options =
-      enum
-        .lowerCaseNamesToValuesMap
-        .map { case (key, value) => s"$key - select $value" }
-        .mkString("\n\t", "\n\t", "")
-
-    val text =
-      s"""
-        |Enter
-        |$options
-      """.stripMargin
-
-    prompt
-      .prompt(text)
-      .map(enum.withNameInsensitiveOption)
-      .flatMap {
-        case None => prompt.printLine("Unknown input").flatMap(_ => selectEnumPrompt(enum))
-        case Some(v) => IO(v)
-      }
-
-  }
-
-  val sexPrompt: IO[Sex] = selectEnumPrompt(Sex)
-  val culturePrompt = selectEnumPrompt(Culture)
+  val sexPrompt: IO[Sex] = TextInterface.selectEnumPrompt(Sex, prompt)
+  val culturePrompt = TextInterface.selectEnumPrompt(Culture, prompt)
   val appPrompt =
     prompt
       .prompt(
         s"""
          | please chose (or exit):
+         | char - to generate a character
        """.stripMargin)
-    .map{
-      case "exit" => sys.exit()
+    .map {
+      case "exit" => Input.ExitRequested
+
     }
 
   val cPrompt: IO[GeneratorActionRequested] =
@@ -127,23 +103,11 @@ object CharacterCreator {
 
       printLine(person.toString).unsafeRunSync()
       printLine(s"character $seed").unsafeRunSync()
-      printLine(pd(PersonDescriptionBuilder.describe(person))).unsafeRunSync()
+      printLine(DescriptionPrinter.print(PersonDescriptionBuilder.describe(person))).unsafeRunSync()
 
       mainloop(state.copy(maybeSeed = Some(nextSeed)), appPrompt.unsafeRunSync())
     case Input.SetSeed(value) =>
       printLine(s"random seed set to $value")
       mainloop(state.copy(maybeSeed = Some(value)), appPrompt.unsafeRunSync())
     }
-
-
-
-  def pd(description: Description): String = pd(description, 0)
-  def pd(description: Description, indentation: Int = 0): String = description match {
-      case Leaf(label, value) =>
-        "\n" + "\t" * indentation + s"$label: $value"
-      case Node(label, descriptions) =>
-        "\n" + "\t" * indentation + s"$label:" +
-          descriptions.map(pd(_, indentation + 1)).mkString
-  }
-
 }

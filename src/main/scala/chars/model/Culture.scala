@@ -3,7 +3,7 @@ package chars.model
 import enumeratum.{Enum, EnumEntry}
 
 sealed trait Culture extends EnumEntry
-object Culture extends Enum[Culture] {
+case object Culture extends Enum[Culture] {
 
   val values = findValues
   case object German extends Culture
