@@ -55,7 +55,8 @@ object Generator {
     randomValuesWithWeights(ev.values, toWeight)
 
 
-  def constant[T](value: T): Random[T] = seed => (seed, value)
+  def constant[T](value: T): Random[T] =
+    for (_ <- randomLong) yield value
 
   def randomValuesWithWeights[T](
       values: Seq[T], toWeight: T => Double
