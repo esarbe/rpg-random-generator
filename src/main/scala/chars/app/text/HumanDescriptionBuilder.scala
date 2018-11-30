@@ -10,7 +10,7 @@ import enumeratum.EnumEntry
 object HumanDescriptionBuilder extends DescriptionBuilder[Human] {
 
   import Description._
-  import DescriptionBuilders._
+  import DescriptionBuilder._
 
   implicit def enumShow[T <: EnumEntry]: Show[T] = _.entryName.toLowerCase
 
@@ -23,8 +23,8 @@ object HumanDescriptionBuilder extends DescriptionBuilder[Human] {
       eye =>
         val descriptions =
           Seq(
-            buildDescription(eye.color),
-            buildDescription(eye.shape)
+            eye.color.describe,
+            eye.shape.describe
           )
 
         Node(label, descriptions)
@@ -54,8 +54,8 @@ object HumanDescriptionBuilder extends DescriptionBuilder[Human] {
 
     val descriptions =
       Seq(
-        buildDescription(face.shape),
-        buildDescription(face.eyes)
+        face.shape.describe,
+        face.eyes.describe
       )
 
     Node(face.getClass.getSimpleName, descriptions)
@@ -72,9 +72,9 @@ object HumanDescriptionBuilder extends DescriptionBuilder[Human] {
 
     val descriptions =
       Seq(
-        buildDescription(body.height)(hd),
-        buildDescription(body.weight)(wd),
-        buildDescription(body.athleticism)(ad)
+        body.height.describe,
+        body.weight.describe,
+        body.athleticism.describe
       )
 
     Node("body", descriptions)
@@ -91,10 +91,10 @@ object HumanDescriptionBuilder extends DescriptionBuilder[Human] {
 
     val descriptions =
       Seq(
-        buildDescription(age),
-        buildDescription(sex),
-        buildDescription(body),
-        buildDescription(head),
+        age.describe,
+        sex.describe,
+        body.describe,
+        head.describe,
       )
 
     Node("human", descriptions)
@@ -132,8 +132,8 @@ object HumanDescriptionBuilder extends DescriptionBuilder[Human] {
   ): DescriptionBuilder[Head] = { head =>
     val descriptions =
       Seq(
-        buildDescription(head.size),
-        buildDescription(head.face),
+        head.size.describe,
+        head.face.describe,
       )
 
     Node("head", descriptions)
