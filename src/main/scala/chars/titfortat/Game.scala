@@ -3,15 +3,18 @@ package chars.titfortat
 import io.estatico.newtype.macros.newtype
 
 
-case class State(lastActions: Map[(Player, Player), Action])
 
 object Game {
   @newtype case class PlayerId(id: Double)
+
+  trait Action
 
   object Action {
     case object Cooperate extends Action
     case object Defect extends Action
   }
+
+  case class State(lastActions: Map[(Player, Player), Action])
 
 
   trait Player {
