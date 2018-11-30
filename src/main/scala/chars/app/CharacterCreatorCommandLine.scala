@@ -1,21 +1,18 @@
 package chars.app
 
-import cats.data.ValidatedNel
 import cats.effect.IO
 import cats.implicits._
-import chars.app.Arguments._
 import chars.app.text.PersonDescriptionBuilder
 import chars.app.ui.PromptConsoleInterpreter
+import chars.decline.enumeratum.Argument._
 import chars.model.{Culture, Person, Sex}
-import chars.text.{DescriptionBuilder, DescriptionPrinter}
-import com.monovore.decline.{CommandApp, Opts, _}
-import enumeratum.{Enum, EnumEntry}
-import cats.syntax.all
 import chars.random._
 import chars.text.DescriptionBuilder.DescriptionBuilderOps
+import chars.text.{DescriptionBuilder, DescriptionPrinter}
+import com.monovore.decline.{CommandApp, Opts, _}
 
 
-object CommandLine extends {
+object CharacterCreatorCommandLine extends {
 
   val prompt = new PromptConsoleInterpreter[IO](ui.ConsoleInterpreter)
   implicit val sexArgument: Argument[Sex] = enumArgument(Sex)
