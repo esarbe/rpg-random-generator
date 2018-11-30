@@ -12,4 +12,8 @@ object DescriptionPrinter {
       "\n" + "\t" * indentation + s"$label:" +
         descriptions.map(print(_, indentation + 1)).mkString
   }
+
+  implicit class DescriptionOps[D: DescriptionBuilder](d: D) {
+    def describe: Description = implicitly[DescriptionBuilder[D]].describe(d)
+  }
 }

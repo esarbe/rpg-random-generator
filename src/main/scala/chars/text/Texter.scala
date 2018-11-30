@@ -10,9 +10,10 @@ trait DescriptionBuilder[T] {
   def describe(t: T): Description
 }
 
-object DescriptionBuilders {
 
-  def buildDescription[T: DescriptionBuilder](t: T): Description = {
-    implicitly[DescriptionBuilder[T]].describe(t)
+object DescriptionBuilder {
+
+  implicit class DescriptionBuilderOps[T](t: T)(implicit ev: DescriptionBuilder[T]) {
+    def describe: Description = ev.describe(t)
   }
 }
