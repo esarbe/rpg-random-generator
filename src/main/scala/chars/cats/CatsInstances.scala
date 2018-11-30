@@ -1,6 +1,8 @@
-package chars.random
+package chars.cats
 
-import cats._
+import cats.Monad
+import chars.random.Random
+
 import scala.annotation.tailrec
 
 object CatsInstances {

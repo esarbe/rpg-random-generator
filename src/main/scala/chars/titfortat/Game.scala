@@ -1,8 +1,8 @@
 package chars.titfortat
 
+import chars.random.Generator
+import chars.cats.random._
 import io.estatico.newtype.macros.newtype
-
-
 
 object Game {
   @newtype case class PlayerId(id: Double)
@@ -14,8 +14,7 @@ object Game {
     case object Defect extends Action
   }
 
-  case class State(lastActions: Map[(Player, Player), Action])
-
+  case class State(score: Map[PlayerId, Double], mostRecentActions: Map[(Player, Player), Action])
 
   trait Player {
     def chose(opponentLastAction: Action): Action
@@ -24,6 +23,9 @@ object Game {
   trait Context
 
   val participants = {
+
+    val newId = Generator.randomDouble.map(PlayerId)
+
     val titForTat = new Player {
       override def chose(opponentLastAction: Action): Action = opponentLastAction
     }
