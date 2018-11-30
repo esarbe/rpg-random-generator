@@ -5,7 +5,7 @@ import chars.model._
 import chars.model.human.{Age, Head}
 import chars.model.human.face.Eyes
 
-object HumanoidGen extends Random[Human] {
+object Human {
 
   import cats.implicits._
   import chars.random.CatsInstances._
@@ -81,7 +81,7 @@ object HumanoidGen extends Random[Human] {
     age <- randomAge
     body <- randomBody
     head <-  randomHead
-  } yield Human(sex, age, body, head)
+  } yield chars.model.Human(sex, age, body, head)
 
   def buildGenerator(
       randomSex: Random[Sex] = randomSex,
@@ -94,7 +94,5 @@ object HumanoidGen extends Random[Human] {
       age <- randomAge
       body <- randomBody
       head <-  randomHead
-    } yield Human(sex, age, body, head)
-
-  override def apply(seed: Long): (Long, Human) = randomHuman(seed)
+    } yield chars.model.Human(sex, age, body, head)
 }
