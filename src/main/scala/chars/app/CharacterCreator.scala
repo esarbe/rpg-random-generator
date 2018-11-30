@@ -2,16 +2,14 @@ package chars.app
 
 import cats.effect.IO
 import cats.implicits._
-import chars.app
 import chars.app.CharacterCreator.Input.GeneratorActionRequested
 import chars.app.text.PersonDescriptionBuilder
 import chars.app.ui.{PromptConsoleInterpreter, TextInterface}
 import chars.model._
 import chars.random.CatsInstances._
-import chars.random.model.HumanoidGen
+import chars.random.model.Human
 import chars.random.{Generator, Random}
-import chars.text.{Description, DescriptionPrinter}
-import chars.text.Description._
+import chars.text.DescriptionPrinter
 import enumeratum._
 
 import scala.annotation.tailrec
@@ -58,6 +56,22 @@ object CharacterCreator {
     } yield GeneratorActionRequested(GenerateCharacter(sex, culture))
 
 
+  def buildCharacterGenerator(
+    maybeSex: Option[Sex],
+    maybeCulture: Option[Culture]
+  ): Random[Person] = {
+    val sexGen = maybeSex.map(s => Generator.constant(s)).getOrElse(Generator.oneOf(Sex.Female, Sex.Male))
+    val cultureGen = maybeCulture.map(c => Generator.constant(c)).getOrElse(Generator.oneOf(Culture.values:_*))
+
+    for {
+      sex <- sexGen
+      culture <- cultureGen
+      name <- buildNameGenerator(sex, culture)
+      human <- Human.buildGenerator(Generator.constant(sex))
+    } yield Person(name, human)
+  }
+
+
   def buildNameGenerator(sex: Sex, culture: Culture): Random[String] = {
 
     val file = s"names/${culture.entryName.toLowerCase}-${sex.entryName.toLowerCase}.txt"
@@ -72,42 +86,12 @@ object CharacterCreator {
   }
 
 
-  def sexGenerator(sex: Sex): Random[Sex] =
-    Option(sex)
+  def sexGenerator(maybeSex: Option[Sex]): Random[Sex] =
+    maybeSex
       .filter(Set[Sex](Sex.Male, Sex.Female).contains)
       .map(s => Generator.constant(s))
       .getOrElse(Generator.oneOf(Sex.Male, Sex.Female))
 
 
   import ui.ConsoleInterpreter._
-
-  case class State(maybeSeed: Option[Long])
-
-  @tailrec
-  def mainloop(state: State, input: Input): IO[Unit] = input match {
-    case Input.ExitRequested =>
-      printLine("Bye")
-      sys.exit
-
-    case GeneratorActionRequested(GenerateCharacter(sex, culture)) =>
-
-      val randomPerson =
-        for {
-          sex <- sexGenerator(sex)
-          name <- buildNameGenerator(sex, culture)
-          human <- HumanoidGen.buildGenerator(Generator.constant(sex))
-        } yield Person(name, human)
-
-      val seed = state.maybeSeed.getOrElse(new java.util.Random().nextLong())
-      val (nextSeed, person) = randomPerson.apply(seed)
-
-      printLine(person.toString).unsafeRunSync()
-      printLine(s"character $seed").unsafeRunSync()
-      printLine(DescriptionPrinter.print(PersonDescriptionBuilder.describe(person))).unsafeRunSync()
-
-      mainloop(state.copy(maybeSeed = Some(nextSeed)), appPrompt.unsafeRunSync())
-    case Input.SetSeed(value) =>
-      printLine(s"random seed set to $value")
-      mainloop(state.copy(maybeSeed = Some(value)), appPrompt.unsafeRunSync())
-    }
 }
