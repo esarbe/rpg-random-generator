@@ -2,7 +2,7 @@ name := "RPG Character Generator"
 
 scalacOptions += "-Ypartial-unification"
 
-addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
+addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)
 
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.0"
 
@@ -20,7 +20,10 @@ libraryDependencies += "com.monovore" %% "decline" % "0.5.0"
 
 libraryDependencies += "com.github.mpilquist" %% "simulacrum" % "0.10.0"
 
-version := "0.0.0"
+libraryDependencies += "io.estatico" %% "newtype" % "0.4.2"
+
+
+version := "0.0.1-SNAPSHOT"
 
 scalaVersion := "2.12.4"
 
