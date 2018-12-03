@@ -5,9 +5,9 @@ import chars.random.Random
 
 import scala.annotation.tailrec
 
-object CatsInstances {
+object random {
 
-  implicit val randomMonad: Monad[Random] = new Monad[Random] {
+  implicit val monad: Monad[Random] = new Monad[Random] {
 
     override def flatMap[A, B](fa: Random[A])(f: A => Random[B]): Random[B] = { seed =>
       val (nextSeed, value) = fa(seed)

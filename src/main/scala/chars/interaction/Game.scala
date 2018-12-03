@@ -1,4 +1,4 @@
-package chars.interaction
+ackage chars.interaction
 
 object RunGame extends App {
   val greedo = new r.game.GreedyPlayer { override def toString = "greedo"}
