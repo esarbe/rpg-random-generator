@@ -1,13 +1,13 @@
 package chars.titfortat
 
-import chars.random.{Generator, Random}
-import cats.implicits._
-import chars.cats.random.monad
+import java.util.UUID
+
 import io.estatico.newtype.macros.newtype
 
 object Game {
+
   type Payoff = Double
-  @newtype case class PlayerId(id: Double)
+  @newtype case class PlayerId(id: Int)
   case class Outcome(player: PlayerId, opponent: PlayerId, action: Action, payoff: Payoff)
   type Pairing = (Player, Player)
   type Player = (PlayerId, Strategy)
@@ -19,7 +19,7 @@ object Game {
     case object Defect extends Action
   }
 
-  type InteractionEntryKey = (Set[PlayerId], PlayerId)
+  type InteractionEntryKey = (PlayerId, PlayerId)
   type InteractionEntry = (InteractionEntryKey, Action)
   implicit class HistoryOps(val history: Set[InteractionEntry]) extends AnyVal {
     def findLastAction(key: InteractionEntryKey): Option[InteractionEntry] = {
@@ -27,29 +27,17 @@ object Game {
     }
   }
 
-  case class State(score: Map[PlayerId, Double], mostRecentActions: Set[InteractionEntry])
+  case class State(score: Map[PlayerId, Payoff], mostRecentActions: Set[InteractionEntry])
+  object State {
+    def empty: State = State(Map.empty, Set.empty)
+  }
 
   trait Strategy {
     def chose(state: State, self: Player, other: PlayerId): Action
   }
 
 
-  def randomPlayers(distribution: Map[Int, Strategy]): Random[Seq[Player]] = { seed: Long =>
-
-    val newId = Generator.randomDouble.map(PlayerId)
-
-    val strategies = distribution.flatMap { case (number, strategy) => List.fill(number)(strategy) }
-
-    val init: (Long, Seq[(PlayerId, Strategy)]) = (seed, Seq.empty[(PlayerId, Strategy)])
-
-    strategies.foldLeft(init){ case ((seed, participants), curr: Strategy) =>
-      val (newSeed, id) = newId(seed)
-      (newSeed, participants :+ (id, curr))
-    }
-  }
-
-
-  type Payoffs = Map[(Action, Action), (Double, Double)]
+  type Payoffs = Map[(Action, Action), (Payoff, Payoff)]
 
   def evaluate(payoffs: Payoffs, state: State)(left: Player, right: Player): (Outcome, Outcome) = {
 
@@ -63,36 +51,34 @@ object Game {
     val (leftPayoff, rightPayoff) = payoffs((leftAction, rightAction))
 
     (
-      Outcome(left._1, right._1, leftAction, leftPayoff),
-      Outcome(right._1, left._1, rightAction, rightPayoff)
+      Outcome(left._1, right._1, rightAction, leftPayoff),
+      Outcome(right._1, left._1, leftAction, rightPayoff)
     )
   }
 
-  def runPairings(payoffs: Payoffs, state: State, pairings: Set[Pairing]): State = {
+  def runPairings(payoffs: Payoffs, state: State, pairings: Seq[Pairing]): State = {
 
     val outcomes =
       pairings
-        .toList
         .flatMap { case (left, right) =>
           val (lOutcome, rOutcome) = evaluate(payoffs, state)(left, right)
           List(lOutcome, rOutcome)
         }
 
+    val newScore = outcomes.foldLeft(state.score) { case (acc: Map[PlayerId, Payoff], outcome) =>
+      val oldScore = acc.getOrElse(outcome.player, 0.0)
 
-    val newScore = outcomes.foldLeft(state.score) { case (acc, Outcome(playerId, opponent, action, payoff)) =>
-      val oldScore = acc.getOrElse(playerId, 0)
-
-      acc + (playerId -> (oldScore + payoff))
+      acc + (outcome.player -> (oldScore + outcome.payoff))
     }
 
     val mostRecentActions =
-      outcomes.map { case Outcome(playerId, opponent, action, payoff) =>
-        (Set(playerId, opponent), playerId) -> action
+      outcomes.map { case Outcome(playerId, opponent, opponentAction, payoff) =>
+        (playerId, opponent) -> opponentAction
       }.toSet
 
     state.copy(
       score = newScore,
-      mostRecentActions = mostRecentActions
+      mostRecentActions = state.mostRecentActions ++ mostRecentActions
     )
   }
 
