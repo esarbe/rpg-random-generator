@@ -8,7 +8,7 @@ import chars.model.human.face.Eyes
 object Human {
 
   import cats.implicits._
-  import chars.cats.CatsInstances._
+  import chars.cats.random._
   import chars.random.Generator._
 
   val randomValueCategory = randomEnum[chars.model.CategorizedValue]

@@ -40,7 +40,7 @@ object HiddenMarkovModel {
 
   def buildModel(source: File): HiddenMarkovModel = {
     val lines =
-      io.Source
+      scala.io.Source
         .fromFile(source)
         .getLines
 

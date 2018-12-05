@@ -1,13 +1,13 @@
 package chars.decline.enumeratum
 
 import cats.data.ValidatedNel
-import com.monovore.decline.Argument
 import enumeratum.{Enum, EnumEntry}
 import cats.implicits._
+import com.monovore.decline
 
 object Argument {
 
-  def enumArgument[E <: EnumEntry](e: Enum[E]): Argument[E] = new Argument[E] {
+  def enumArgument[E <: EnumEntry](e: Enum[E]): decline.Argument[E] = new decline.Argument[E] {
     override def read(string: String): ValidatedNel[String, E] =
       e.
         withNameInsensitiveOption(string)
