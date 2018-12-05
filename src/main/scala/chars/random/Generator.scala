@@ -2,6 +2,8 @@ package chars.random
 
 import enumeratum.{Enum, EnumEntry}
 
+import scala.collection.immutable
+
 object Generator {
 
   import chars.cats.random._
@@ -37,12 +39,20 @@ object Generator {
     }
   }
 
-
   def oneOf[T](values: T*): Random[T] =
     for {
       rand <- randomInt
       index = Math.abs(rand) % values.length
     } yield values.apply(index)
+
+
+  def sequence[T](s: Seq[Random[T]]): Random[Seq[T]] = {
+    seed: Long =>
+      s.foldLeft((seed, Seq.empty[T])) { case ((seed, acc), curr) =>
+        val (newSeed, t) = curr(seed)
+        (newSeed, acc :+ t)
+      }
+  }
 
 
   def randomEnum[T <: EnumEntry](implicit ev: Enum[T]): Random[T] =
