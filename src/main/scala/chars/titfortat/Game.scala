@@ -1,18 +1,108 @@
 package chars.titfortat
 
-import java.util.UUID
-
+import chars.titfortat.Game.{Action, Outcome, Payoffs, PlayerId, Score}
 import io.estatico.newtype.macros.newtype
 
-object Game {
+trait LastMoveMemory extends Game {
+  trait LastMoveContext extends ContextLike {
+    def getLastMove(player: PlayerId, opponent: PlayerId): Option[Action]
+  }
+}
 
+trait ScoreKnowledge extends Game {
+  trait ScoreContext extends ContextLike {
+    def getScore(player: PlayerId): Score
+  }
+}
+
+trait PayoffKnowledge extends Game {
+  trait PayoffContext extends ContextLike {
+    def getPayoffs: Payoffs
+  }
+}
+
+trait Game {
+  type Pairing = (Player, Player)
+  type Player
+
+  type State <: StateLike
+  trait StateLike
+
+  type Context <: ContextLike
+  trait ContextLike
+
+  trait Strategy {
+    def chose(context: Context, player: Player, opponent: PlayerId): Action
+  }
+  val initialState: State
+  def buildPlayer(id: PlayerId, strategy: Strategy): Player
+  def buildContext(state: State, player: PlayerId, opponent: PlayerId): Context
+  def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): State
+}
+
+
+object IPD extends Game with LastMoveMemory with PayoffKnowledge with ScoreKnowledge {
+
+  type Player = PlayerImp
+  case class PlayerImp(id: PlayerId, strategy: Strategy)
+
+
+  type State = StateImp
+  case class StateImp(history: Map[(PlayerId, PlayerId), Action], scores: Map[PlayerId, Score]) extends StateLike {
+    def update(outcome: Outcome): StateImp = copy(
+      history = history + ((outcome.player, outcome.opponent) -> outcome.action),
+      scores = scores + (outcome.player -> (scores.getOrElse(outcome.player, 0.0) + outcome.payoff))
+    )
+  }
+
+  val initialState = StateImp(Map.empty[(PlayerId, PlayerId), Action], Map.empty[PlayerId, Score])
+
+
+  type Context = ContextImp
+  case class ContextImp(state: State) extends LastMoveContext with PayoffContext with ScoreContext {
+    override def getLastMove(player: PlayerId, opponent: PlayerId): Option[Action] = state.history.get((player, opponent))
+    override def getPayoffs: Payoffs = ???
+    override def getScore(player: PlayerId): Score = ???
+  }
+
+  override def buildPlayer(id: PlayerId, strategy: IPD.Strategy): PlayerImp = PlayerImp(id, strategy)
+
+  def buildContext(state: State, player: PlayerId, opponent: PlayerId): ContextImp = ContextImp(state)
+  def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): State = {
+
+    val (left, right) = pairing
+    val outcomes = evaluate(payoffs, state)(left, right)
+
+    outcomes.foldLeft(state)(_ update _)
+  }
+
+  def evaluate(payoffs: Payoffs, state: State)(left: Player, right: Player): Seq[Outcome] = {
+
+    def action(player: Player, other: PlayerId): Action = {
+      player.strategy.chose(buildContext(state, player.id, other), player, other)
+    }
+
+    val leftAction = action(left, right.id)
+    val rightAction = action(right, left.id)
+
+    val (leftPayoff, rightPayoff) = payoffs((leftAction, rightAction))
+
+    Seq(
+      Outcome(left.id, right.id, leftAction, leftPayoff),
+      Outcome(right.id, left.id, rightAction, rightPayoff)
+    )
+  }
+
+
+}
+
+object Game {
+  type Score = Double
   type Payoff = Double
   @newtype case class PlayerId(id: Int)
   case class Outcome(player: PlayerId, opponent: PlayerId, action: Action, payoff: Payoff)
-  type Pairing = (Player, Player)
-  type Player = (PlayerId, Strategy)
 
-  trait Action
+  sealed trait Action
 
   object Action {
     case object Cooperate extends Action
@@ -21,65 +111,5 @@ object Game {
 
   type InteractionEntryKey = (PlayerId, PlayerId)
   type InteractionEntry = (InteractionEntryKey, Action)
-  implicit class HistoryOps(val history: Set[InteractionEntry]) extends AnyVal {
-    def findLastAction(key: InteractionEntryKey): Option[InteractionEntry] = {
-      history.toList.reverse.find(_._1 == key)
-    }
-  }
-
-  case class State(score: Map[PlayerId, Payoff], mostRecentActions: Set[InteractionEntry])
-  object State {
-    def empty: State = State(Map.empty, Set.empty)
-  }
-
-  trait Strategy {
-    def chose(state: State, self: Player, other: PlayerId): Action
-  }
-
-
   type Payoffs = Map[(Action, Action), (Payoff, Payoff)]
-
-  def evaluate(payoffs: Payoffs, state: State)(left: Player, right: Player): (Outcome, Outcome) = {
-
-    def action(self: Player, other: PlayerId): Action = {
-      self._2.chose(state, self, other)
-    }
-
-    val leftAction = action(left, right._1)
-    val rightAction = action(right, left._1)
-
-    val (leftPayoff, rightPayoff) = payoffs((leftAction, rightAction))
-
-    (
-      Outcome(left._1, right._1, rightAction, leftPayoff),
-      Outcome(right._1, left._1, leftAction, rightPayoff)
-    )
-  }
-
-  def runPairings(payoffs: Payoffs, state: State, pairings: Seq[Pairing]): State = {
-
-    val outcomes =
-      pairings
-        .flatMap { case (left, right) =>
-          val (lOutcome, rOutcome) = evaluate(payoffs, state)(left, right)
-          List(lOutcome, rOutcome)
-        }
-
-    val newScore = outcomes.foldLeft(state.score) { case (acc: Map[PlayerId, Payoff], outcome) =>
-      val oldScore = acc.getOrElse(outcome.player, 0.0)
-
-      acc + (outcome.player -> (oldScore + outcome.payoff))
-    }
-
-    val mostRecentActions =
-      outcomes.map { case Outcome(playerId, opponent, opponentAction, payoff) =>
-        (playerId, opponent) -> opponentAction
-      }.toSet
-
-    state.copy(
-      score = newScore,
-      mostRecentActions = state.mostRecentActions ++ mostRecentActions
-    )
-  }
-
 }
