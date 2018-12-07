@@ -37,7 +37,7 @@ object CharacterCreatorCommandLine extends {
       val person =
         CharacterCreator
           .buildCharacterGenerator(maybeSex, maybeCulture)
-          .get(seed)
+          .run(seed)
 
       val personDescription = DescriptionBuilderOps(person)(personDescriptionBuilder).describe
       println(DescriptionPrinter.print(personDescription))

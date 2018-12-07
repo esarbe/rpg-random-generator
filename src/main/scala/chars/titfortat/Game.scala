@@ -22,6 +22,7 @@ trait PayoffKnowledge extends Game {
 }
 
 trait Game {
+  type Pairings = Seq[Pairing]
   type Pairing = (Player, Player)
   type Player
 
