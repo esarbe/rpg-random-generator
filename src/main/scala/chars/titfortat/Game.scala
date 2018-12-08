@@ -1,5 +1,6 @@
 package chars.titfortat
 
+import chars.titfortat.Game.Action.{Cooperate, Defect}
 import chars.titfortat.Game.{Action, Outcome, Payoffs, PlayerId, Score}
 import io.estatico.newtype.macros.newtype
 
@@ -37,7 +38,7 @@ trait Game {
   }
   val initialState: State
   def buildPlayer(id: PlayerId, strategy: Strategy): Player
-  def buildContext(state: State, player: PlayerId, opponent: PlayerId): Context
+  def buildContext(state: State, payoffs: Payoffs, player: PlayerId, opponent: PlayerId): Context
   def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): State
 }
 
@@ -60,15 +61,30 @@ object IPD extends Game with LastMoveMemory with PayoffKnowledge with ScoreKnowl
 
 
   type Context = ContextImp
-  case class ContextImp(state: State) extends LastMoveContext with PayoffContext with ScoreContext {
+  case class ContextImp(state: State, payoffs: Payoffs) extends LastMoveContext with PayoffContext with ScoreContext {
     override def getLastMove(player: PlayerId, opponent: PlayerId): Option[Action] = state.history.get((player, opponent))
-    override def getPayoffs: Payoffs = ???
-    override def getScore(player: PlayerId): Score = ???
+    override def getPayoffs: Payoffs = payoffs
+    override def getScore(player: PlayerId): Score = state.scores.getOrElse(player, 0l)
   }
+
+  val defect = new Strategy {
+    override def chose(context: Context, player: PlayerImp, opponent: Game.PlayerId): Game.Action = Defect
+  }
+
+  val cooperate = new Strategy {
+    override def chose(context: Context, player: PlayerImp, opponent: Game.PlayerId): Game.Action = Cooperate
+  }
+
+  val tft = new Strategy {
+    override def chose(context: Context, player: PlayerImp, opponent: Game.PlayerId): Game.Action =
+      context.getLastMove(opponent, player.id).getOrElse(Cooperate)
+  }
+
 
   override def buildPlayer(id: PlayerId, strategy: IPD.Strategy): PlayerImp = PlayerImp(id, strategy)
 
-  def buildContext(state: State, player: PlayerId, opponent: PlayerId): ContextImp = ContextImp(state)
+  def buildContext(state: State, payoffs: Payoffs, player: PlayerId, opponent: PlayerId): ContextImp =
+    ContextImp(state, payoffs)
   def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): State = {
 
     val (left, right) = pairing
@@ -80,7 +96,7 @@ object IPD extends Game with LastMoveMemory with PayoffKnowledge with ScoreKnowl
   def evaluate(payoffs: Payoffs, state: State)(left: Player, right: Player): Seq[Outcome] = {
 
     def action(player: Player, other: PlayerId): Action = {
-      player.strategy.chose(buildContext(state, player.id, other), player, other)
+      player.strategy.chose(buildContext(state, payoffs, player.id, other), player, other)
     }
 
     val leftAction = action(left, right.id)
@@ -93,8 +109,6 @@ object IPD extends Game with LastMoveMemory with PayoffKnowledge with ScoreKnowl
       Outcome(right.id, left.id, rightAction, rightPayoff)
     )
   }
-
-
 }
 
 object Game {
