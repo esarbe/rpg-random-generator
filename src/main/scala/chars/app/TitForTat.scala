@@ -12,8 +12,8 @@ import com.monovore.decline.{CommandApp, Opts}
 
 
 //mvp:
-// (/) - run IPD
-// - run IPD with participants type distribution taken from cmd line
+// - (/) run IPD
+// - (/) run IPD with participants type distribution taken from cmd line
 // - run IPD interactively from cmd line
 // - run IPD interactively from web gui
 // - run IPD interactively concurrently

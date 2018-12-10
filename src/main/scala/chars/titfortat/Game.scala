@@ -1,5 +1,6 @@
 package chars.titfortat
 
+import cats.Id
 import chars.titfortat.Game.Action.{Cooperate, Defect}
 import chars.titfortat.Game.{Action, Outcome, Payoffs, PlayerId, Score}
 import io.estatico.newtype.macros.newtype
@@ -23,6 +24,7 @@ trait PayoffKnowledge extends Game {
 }
 
 trait Game {
+  type F[_]
   type Pairings = Seq[Pairing]
   type Pairing = (Player, Player)
   type Player
@@ -34,16 +36,18 @@ trait Game {
   trait ContextLike
 
   trait Strategy {
-    def chose(context: Context, player: Player, opponent: PlayerId): Action
+    def chose(context: Context, player: Player, opponent: PlayerId): F[Action]
   }
+
   val initialState: State
-  def buildPlayer(id: PlayerId, strategy: Strategy): Player
-  def buildContext(state: State, payoffs: Payoffs, player: PlayerId, opponent: PlayerId): Context
-  def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): State
+  def buildPlayer(id: PlayerId, strategy: Strategy): F[Player]
+  def buildContext(state: State, payoffs: Payoffs, player: PlayerId, opponent: PlayerId): F[Context]
+  def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): F[State]
 }
 
 
 object IPD extends Game with LastMoveMemory with PayoffKnowledge with ScoreKnowledge {
+  type F[A] = Id[A]
 
   type Player = PlayerImp
   case class PlayerImp(id: PlayerId, strategy: Strategy)
@@ -85,6 +89,7 @@ object IPD extends Game with LastMoveMemory with PayoffKnowledge with ScoreKnowl
 
   def buildContext(state: State, payoffs: Payoffs, player: PlayerId, opponent: PlayerId): ContextImp =
     ContextImp(state, payoffs)
+
   def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): State = {
 
     val (left, right) = pairing
