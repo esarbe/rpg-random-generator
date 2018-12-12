@@ -1,17 +1,19 @@
 package chars.titfortat
 
+import cats.Id
 import chars.titfortat.Game.Action.{Cooperate, Defect}
 import chars.titfortat.Game.{Action, Payoff, Payoffs, PlayerId}
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{Matchers, WordSpec}
 
 class IPDSpec extends WordSpec with Matchers with GeneratorDrivenPropertyChecks {
+  val IPD = new IPD[Id]
   import IPD._
   val payoffs = Map.empty[(Action, Action), (Payoff, Payoff)].withDefaultValue((0d, 0d))
   val tftId = PlayerId(1)
   val defectorId = PlayerId(2)
-  val tftPlayer = IPD.buildPlayer(tftId, tft)
-  val defectorPlayer = IPD.buildPlayer(defectorId, defect)
+  val tftPlayer = IPD.buildPlayer(tftId, titForTat)
+  val defectorPlayer = IPD.buildPlayer(defectorId, greedy)
   val context = buildContext(initialState, payoffs, tftId, defectorId)
 
 
@@ -19,13 +21,13 @@ class IPDSpec extends WordSpec with Matchers with GeneratorDrivenPropertyChecks 
     val context = buildContext(initialState, payoffs,  tftId, defectorId)
 
     "chose to cooperate in new pairing" in {
-      val chosenAction = tft.chose(context, tftPlayer, defectorId)
+      val chosenAction = titForTat.chose(context, tftPlayer, defectorId)
       chosenAction shouldBe Cooperate
     }
 
     "chose the last action of the opponent for existing parings" in {
       val context = buildContext(initialState.copy(history = Map((defectorId, tftId) -> Defect)), payoffs, tftId, defectorId)
-      val chosenAction = tft.chose(context, tftPlayer, defectorId)
+      val chosenAction = titForTat.chose(context, tftPlayer, defectorId)
       chosenAction shouldBe Defect
     }
   }

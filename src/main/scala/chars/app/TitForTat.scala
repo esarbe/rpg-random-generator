@@ -1,20 +1,23 @@
 package chars.app
 
+import cats.Id
+import cats.Monad
+import cats.effect.IO
 import cats.implicits._
+import chars.app.ui.{Console, Prompt, PromptConsoleInterpreter}
 import chars.cats.random.monad
 import chars.random.Generator.oneOf
 import chars.random._
 import chars.titfortat.Game.Action.{Cooperate, Defect}
 import chars.titfortat.Game.{Action, Payoffs, PlayerId, Score}
 import chars.titfortat.IPD
-import chars.titfortat.IPD._
 import com.monovore.decline.{CommandApp, Opts}
 
 
 //mvp:
 // - (/) run IPD
 // - (/) run IPD with participants type distribution taken from cmd line
-// - run IPD interactively from cmd line
+// - (/) run IPD interactively from cmd line
 // - run IPD interactively from web gui
 // - run IPD interactively concurrently
 // - accounts
@@ -35,51 +38,84 @@ object TitForTat
     val numberCooperators = Opts.option[Int]("cooperators", help = "number of cooperators", short = "c")
     val numberOfTitForTat = Opts.option[Int]("titfortat", help = "number of titfortat players", short = "t")
     val maybeSeed = Opts.option[Long]("seed", help = "random seed", "s").orNone
+    val isInteractiveInput = Opts.flag("interactive", help = "run interactive mode", short = "i").orNone
 
-    val game = new TitForTat()
+    (maybeSeed, rounds, numberDefect, numberCooperators, numberOfTitForTat, isInteractiveInput).mapN {
+      case (maybeSeed, rounds, numberDefect, numberCooperators, numberOfTitForTat, isInteractive) =>
 
-    (maybeSeed, rounds, numberDefect, numberCooperators, numberOfTitForTat).mapN {
-      case (maybeSeed, rounds, numberDefect, numberCooperators, numberOfTitForTat) =>
-
+        val prompt = new PromptConsoleInterpreter[IO](ui.ConsoleInterpreter)
+        val game = new TitForTat(prompt)
         val seed = maybeSeed.getOrElse(0l)
-        val distribution: Seq[(IPD.Strategy, Int)] =
+        val distribution: Seq[(game.Strategy, Int)] =
           Seq(
-            game.titForTat -> numberOfTitForTat,
-            game.greedy -> numberDefect,
-            game.naive -> numberCooperators)
+            game.game.titForTat -> numberOfTitForTat,
+            game.game.greedy -> numberDefect,
+            game.game.naive -> numberCooperators,
+            game.interactive -> (if (isInteractive.isDefined) 1 else 0))
 
-        val endstate = game.runGame(distribution, rounds).run(seed)
-        println(s"resulting state: ${endstate.mkString("\n")}")
+
+        game.runGame(distribution, rounds).run(seed).flatMap { scores =>
+
+          val displayScores =
+            scores
+              .toList
+              .sortBy(_._2)
+              .reverse
+              .map { case (id, score) => s"$id\t$score" }
+              .mkString("\n")
+
+          prompt.printLine(
+            s"""
+              | Final scores:
+              | $displayScores
+              |
+              | ${ if (isInteractive.isDefined) "Thank you for playing." else "" }
+
+            """.stripMargin)
+        }.unsafeRunSync()
+
+
     }
   }
 
 )
 
-class TitForTat() {
+class TitForTat[F[_]: Monad](prompt: Prompt[F] with Console[F]) {
 
-  import IPD._
+  val game = new IPD[F]
 
-  val titForTat = new Strategy {
-    override def toString: String = "tft"
-    override def chose(context: Context, player: PlayerImp, opponent: PlayerId): Action =
-      context.getLastMove(opponent, player.id).getOrElse(Cooperate)
+  import game.{Context, Player, Pairing, Pairings, initialState, runPairing, buildPlayer, greedy, titForTat}
+
+  type Strategy = game.Strategy
+
+  def pure[A](a: A) = implicitly[Monad[F]].pure(a)
+
+  val interactive = new Strategy {
+    override def chose(context: Context, player: Player, opponent: PlayerId): F[Action] = {
+      lazy val input: F[Action] =
+        prompt.prompt(
+          s"""
+            |
+            | You play against player $opponent. This player's last move was to ${context.getLastMove(player.id, opponent)}
+            | Your score is ${context.getScore(player.id)}. Your opponent's score is ${context.getScore(opponent)}
+            | What do you chose to do? (c)ooperate or (d)efect?
+          """.stripMargin
+        ).flatMap {
+          case "d" => pure(Defect)
+          case "c" => pure(Cooperate)
+          case _ => input
+        }
+
+      input
+    }
   }
 
-  val greedy = new Strategy {
-    override def toString: String = "greedy"
-    override def chose(context: Context, player: PlayerImp, opponent: PlayerId): Action = Defect
-  }
-
-  val naive = new Strategy {
-    override def toString: String = "naive"
-    override def chose(context: Context, player: PlayerImp, opponent: PlayerId): Action = Cooperate
-  }
 
   val distribution =
     Seq(
       titForTat -> 4,
       greedy -> 1,
-      //naive -> 1
+      interactive -> 1
     )
 
   val payoffs: Payoffs = Map(
@@ -120,17 +156,22 @@ class TitForTat() {
     Generator.sequence(randomPairingRounds)
   }
 
-  def runGame(distribution: Seq[(Strategy, Int)], rounds: Int): Random[Map[PlayerImp, Score]] = {
+  def runGame(distribution: Seq[(Strategy, Int)], rounds: Int): Random[F[Map[PlayerId, Score]]] = {
     randomPlayers(distribution)
       .flatMap(randomPairingRounds(rounds))
       .map { pairingRounds =>
         val participants = pairingRounds.flatten.toMap.keys
 
-        val endState = pairingRounds.foldLeft(initialState) { case (state, pairings) =>
-          pairings.foldLeft(state){ case (state, pairing) => runPairing(payoffs, state, pairing)}
+        val endStateM = pairingRounds.foldLeft(pure(initialState)) { case (state, pairings) =>
+          pairings.foldLeft(state){ case (stateM, pairing) => stateM.flatMap(runPairing(payoffs, _, pairing)) }
         }
 
-        (participants zip participants.map(_.id)).toMap.mapValues(endState.scores)
+        endStateM.map { endstate =>
+
+          participants.map { participant =>
+            participant.id -> endstate.scores(participant.id)
+          }.toMap
+        }
       }
-  }
+    }
 }

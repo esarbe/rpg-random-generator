@@ -1,30 +1,35 @@
 package chars.titfortat
 
-import cats.Id
+import cats.{Id, Monad}
+import cats.implicits._
 import chars.titfortat.Game.Action.{Cooperate, Defect}
 import chars.titfortat.Game.{Action, Outcome, Payoffs, PlayerId, Score}
 import io.estatico.newtype.macros.newtype
 
-trait LastMoveMemory extends Game {
+trait LastMoveMemory extends GameContextCapability {
   trait LastMoveContext extends ContextLike {
     def getLastMove(player: PlayerId, opponent: PlayerId): Option[Action]
   }
 }
 
-trait ScoreKnowledge extends Game {
+trait ScoreKnowledge extends GameContextCapability {
   trait ScoreContext extends ContextLike {
     def getScore(player: PlayerId): Score
   }
 }
 
-trait PayoffKnowledge extends Game {
+trait PayoffKnowledge extends GameContextCapability {
   trait PayoffContext extends ContextLike {
     def getPayoffs: Payoffs
   }
 }
 
-trait Game {
-  type F[_]
+trait GameContextCapability {
+  type Context <: ContextLike
+  trait ContextLike
+}
+
+trait Game[F[_]] extends GameContextCapability {
   type Pairings = Seq[Pairing]
   type Pairing = (Player, Player)
   type Player
@@ -32,22 +37,21 @@ trait Game {
   type State <: StateLike
   trait StateLike
 
-  type Context <: ContextLike
-  trait ContextLike
+
 
   trait Strategy {
     def chose(context: Context, player: Player, opponent: PlayerId): F[Action]
   }
 
   val initialState: State
-  def buildPlayer(id: PlayerId, strategy: Strategy): F[Player]
-  def buildContext(state: State, payoffs: Payoffs, player: PlayerId, opponent: PlayerId): F[Context]
+  def buildPlayer(id: PlayerId, strategy: Strategy): Player
+  def buildContext(state: State, payoffs: Payoffs, player: PlayerId, opponent: PlayerId): Context
   def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): F[State]
 }
 
 
-object IPD extends Game with LastMoveMemory with PayoffKnowledge with ScoreKnowledge {
-  type F[A] = Id[A]
+
+class IPD[F[_]: Monad] extends Game[F] with LastMoveMemory with PayoffKnowledge with ScoreKnowledge {
 
   type Player = PlayerImp
   case class PlayerImp(id: PlayerId, strategy: Strategy)
@@ -63,6 +67,23 @@ object IPD extends Game with LastMoveMemory with PayoffKnowledge with ScoreKnowl
 
   val initialState = StateImp(Map.empty[(PlayerId, PlayerId), Action], Map.empty[PlayerId, Score])
 
+  val titForTat = new Strategy {
+    override def toString: String = "tft"
+    override def chose(context: Context, player: Player, opponent: PlayerId): F[Action] =
+      implicitly[Monad[F]].pure(context.getLastMove(opponent, player.id).getOrElse(Cooperate))
+  }
+
+  val greedy = new Strategy {
+    override def toString: String = "greedy"
+    override def chose(context: Context, player: Player, opponent: PlayerId): F[Action] = pure(Defect)
+  }
+
+  val naive = new Strategy {
+    override def toString: String = "naive"
+    override def chose(context: Context, player: Player, opponent: PlayerId): F[Action] = pure(Cooperate)
+  }
+
+
 
   type Context = ContextImp
   case class ContextImp(state: State, payoffs: Payoffs) extends LastMoveContext with PayoffContext with ScoreContext {
@@ -71,48 +92,41 @@ object IPD extends Game with LastMoveMemory with PayoffKnowledge with ScoreKnowl
     override def getScore(player: PlayerId): Score = state.scores.getOrElse(player, 0l)
   }
 
-  val defect = new Strategy {
-    override def chose(context: Context, player: PlayerImp, opponent: Game.PlayerId): Game.Action = Defect
-  }
+  def pure[A](a: A): F[A] = implicitly[Monad[F]].pure(a)
 
-  val cooperate = new Strategy {
-    override def chose(context: Context, player: PlayerImp, opponent: Game.PlayerId): Game.Action = Cooperate
-  }
+  override def buildPlayer(id: PlayerId, strategy: Strategy): PlayerImp =
+    PlayerImp(id, strategy)
 
-  val tft = new Strategy {
-    override def chose(context: Context, player: PlayerImp, opponent: Game.PlayerId): Game.Action =
-      context.getLastMove(opponent, player.id).getOrElse(Cooperate)
-  }
-
-
-  override def buildPlayer(id: PlayerId, strategy: IPD.Strategy): PlayerImp = PlayerImp(id, strategy)
-
-  def buildContext(state: State, payoffs: Payoffs, player: PlayerId, opponent: PlayerId): ContextImp =
+  def buildContext(state: State, payoffs: Payoffs, player: PlayerId, opponent: PlayerId): Context =
     ContextImp(state, payoffs)
 
-  def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): State = {
+  def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): F[State] = {
 
     val (left, right) = pairing
-    val outcomes = evaluate(payoffs, state)(left, right)
-
-    outcomes.foldLeft(state)(_ update _)
+    evaluate(payoffs, state)(left, right)
+      .map { outcomes =>
+        outcomes.foldLeft(state)(_ update _)
+      }
   }
 
-  def evaluate(payoffs: Payoffs, state: State)(left: Player, right: Player): Seq[Outcome] = {
+  def evaluate(payoffs: Payoffs, state: State)(left: Player, right: Player): F[Seq[Outcome]] = {
 
-    def action(player: Player, other: PlayerId): Action = {
-      player.strategy.chose(buildContext(state, payoffs, player.id, other), player, other)
+    def action(player: Player, other: PlayerId): F[Action] = {
+      val context = buildContext(state, payoffs, player.id, other)
+      player.strategy.chose(context, player, other)
     }
 
-    val leftAction = action(left, right.id)
-    val rightAction = action(right, left.id)
+    for {
+      leftAction <- action(left, right.id)
+      rightAction <- action(right, left.id)
+    } yield {
+      val (leftPayoff, rightPayoff) = payoffs((leftAction, rightAction))
 
-    val (leftPayoff, rightPayoff) = payoffs((leftAction, rightAction))
-
-    Seq(
-      Outcome(left.id, right.id, leftAction, leftPayoff),
-      Outcome(right.id, left.id, rightAction, rightPayoff)
-    )
+      Seq(
+        Outcome(left.id, right.id, leftAction, leftPayoff),
+        Outcome(right.id, left.id, rightAction, rightPayoff)
+      )
+    }
   }
 }
 
