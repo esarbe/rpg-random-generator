@@ -4,6 +4,8 @@ scalacOptions += "-Ypartial-unification"
 
 addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)
 
+enablePlugins(JavaAppPackaging)
+
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.0"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
