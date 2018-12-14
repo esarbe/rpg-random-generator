@@ -6,7 +6,6 @@ import chars.app.CharacterCreator.Input.GeneratorActionRequested
 import chars.app.text.PersonDescriptionBuilder
 import chars.app.ui.{PromptConsoleInterpreter, TextInterface}
 import chars.model._
-import chars.cats.random._
 import chars.random.model.Human
 import chars.random.{Generator, Random}
 import chars.text.DescriptionPrinter

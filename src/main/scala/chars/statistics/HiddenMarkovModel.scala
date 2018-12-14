@@ -2,10 +2,11 @@ package chars.statistics
 
 import java.io.File
 
+import chars.random.Seed
+
 import scala.annotation.tailrec
 
 object HiddenMarkovModel {
-
 
   type State = Seq[Char]
   type HiddenMarkovModel = Map[State, Map[State, Int]]
@@ -49,15 +50,15 @@ object HiddenMarkovModel {
 
   implicit class HiddenMarkovModelOps(model: HiddenMarkovModel) {
 
-    def generate(current: State)(seed: Long): State = {
+    def generate(current: State)(seed: Seed): State = {
 
       @tailrec
-      def generate(current: State, seed: Long): State = {
+      def generate(current: State, seed: Seed): State = {
         val char = Seq(current.last)
         val weights: Map[State, Double] = model(char).mapValues(_.toDouble)
         val possibleNexts = weights.keys.toSeq
         val rand = chars.random.Generator.randomValuesWithWeights(possibleNexts, weights.apply)
-        val (nextSeed, nextChar) = rand(seed)
+        val (nextSeed, nextChar) = rand.run(seed).value
 
         if (nextChar == Seq('\n')) current
         else generate(current ++ nextChar, nextSeed)

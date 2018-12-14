@@ -1,14 +1,17 @@
 package chars.random.model
 
+import cats.Eval
+import cats.data.IndexedStateT
 import chars.random.{Generator, Random}
 import chars.model._
+import chars.model.human.face.Eyes.SameEyes
 import chars.model.human.{Age, Head}
-import chars.model.human.face.Eyes
+import chars.model.human.face.{Eye, Eyes}
+import chars.random
 
 object Human {
 
   import cats.implicits._
-  import chars.cats.random._
   import chars.random.Generator._
 
   val randomValueCategory = randomEnum[chars.model.CategorizedValue]
@@ -36,19 +39,19 @@ object Human {
   val randomFaceShape = randomEnum[human.face.Shape]
   val randomEyeShape = randomEnum[human.face.eye.Shape]
 
-  val randomEye =
+  val randomEye: Random[Eye] =
     for {
       eyeColor <- randomEyeColor
       eyeShape <- randomEyeShape
     } yield human.face.Eye(eyeColor, eyeShape)
 
-  val randomSameEyes =
+  val randomSameEyes: Random[Eyes] =
     for {
       eye <- randomEye
     } yield human.face.Eyes.SameEyes(eye)
 
 
-  val randomDifferentEyes =
+  val randomDifferentEyes: Random[Eyes] =
     for {
       leftEye <- randomEye
       rightEye <- randomEye

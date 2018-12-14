@@ -2,6 +2,8 @@ package chars.model
 
 import java.io.File
 
+import chars.random.Seed
+
 
 object HumanSurvivalProject extends App {
 
@@ -9,7 +11,7 @@ object HumanSurvivalProject extends App {
 
   val hmm = buildModel(new File("./src/main/resources/names/german-male.txt"))
 
-  val generated: String = hmm.generate(Seq('\n'))(util.Random.nextLong).mkString
+  val generated: String = hmm.generate(Seq('\n'))(Seed(util.Random.nextLong)).mkString
 
   println(s"Name: $generated")
 

@@ -1,20 +1,15 @@
 package chars.random
 
+import cats.data.State
 import enumeratum.{Enum, EnumEntry}
-
-import scala.collection.immutable
 
 object Generator {
 
-  import chars.cats.random._
-  import cats.implicits._
-
-  def next(bits: Int): Random[Int] = { seed =>
-    val newSeed = seed * 25214903917L + 11L & 281474976710655L
-    val next = newSeed >>> 48 - bits
-
-    (newSeed, next.toInt)
+  def next: Random[Long] = State { seed =>
+    (seed.next, seed.value)
   }
+
+  def next(bits: Int): Random[Int] = next.map(long => (long >>> 48 - bits).toInt)
 
   def randomInt: Random[Int] = next(32)
 
@@ -46,10 +41,10 @@ object Generator {
     } yield values.apply(index)
 
 
-  def sequence[T](s: Seq[Random[T]]): Random[Seq[T]] = {
-    seed: Long =>
+  def sequence[T](s: Seq[Random[T]]): Random[Seq[T]] = State {
+    seed  =>
       s.foldLeft((seed, Seq.empty[T])) { case ((seed, acc), curr) =>
-        val (newSeed, t) = curr(seed)
+        val (newSeed, t) = curr.run(seed).value
         (newSeed, acc :+ t)
       }
   }
