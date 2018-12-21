@@ -1,13 +1,13 @@
 package chars.titfortat
 
 import cats.Id
-import chars.titfortat.Game.Action.{Cooperate, Defect}
-import chars.titfortat.Game.{Action, Payoff, Payoffs, PlayerId}
+import chars.titfortat.PrisonersDilemma.Action.{Cooperate, Defect}
+import chars.titfortat.PrisonersDilemma.{Action, Payoff, Payoffs, PlayerId}
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{Matchers, WordSpec}
 
 class IPDSpec extends WordSpec with Matchers with GeneratorDrivenPropertyChecks {
-  val IPD = new IPD[Id]
+  val IPD = new IteratedPrisonersDilemma[Id]
   import IPD._
   val payoffs = Map.empty[(Action, Action), (Payoff, Payoff)].withDefaultValue((0d, 0d))
   val tftId = PlayerId(1)

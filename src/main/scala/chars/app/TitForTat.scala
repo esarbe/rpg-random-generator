@@ -8,9 +8,9 @@ import chars.decline.random.Argument._
 import chars.app.ui.{Console, Prompt, PromptConsoleInterpreter}
 import chars.random.Generator.oneOf
 import chars.random._
-import chars.titfortat.Game.Action.{Cooperate, Defect}
-import chars.titfortat.Game.{Action, Payoffs, PlayerId, Score}
-import chars.titfortat.IPD
+import chars.titfortat.PrisonersDilemma.Action.{Cooperate, Defect}
+import chars.titfortat.PrisonersDilemma.{Action, Payoffs, PlayerId, Score}
+import chars.titfortat.IteratedPrisonersDilemma
 import com.monovore.decline.{CommandApp, Opts}
 
 
@@ -44,7 +44,8 @@ object TitForTat
       case (maybeSeed, rounds, numberDefect, numberCooperators, numberOfTitForTat, isInteractive) =>
 
         val prompt = new PromptConsoleInterpreter[IO](ui.ConsoleInterpreter)
-        val game = new TitForTat(prompt)
+        val ipd = new IteratedPrisonersDilemma[IO]()
+        val game = new TitForTat(prompt, ipd)
         val seed = maybeSeed.getOrElse(Seed(0l))
         val distribution: Seq[(game.Strategy, Int)] =
           Seq(
@@ -53,8 +54,13 @@ object TitForTat
             game.game.naive -> numberCooperators,
             game.interactive -> (if (isInteractive.isDefined) 1 else 0))
 
+        val endState =
+          for {
+            players <- game.randomPlayers(distribution)
+            endState <- game.runGame(players, rounds)
+          } yield endState
 
-        game.runGame(distribution, rounds).run(seed).value._2.flatMap { scores =>
+        endState.runA(seed).value.flatMap { scores =>
 
           val displayScores =
             scores
@@ -80,19 +86,15 @@ object TitForTat
 
 )
 
-class TitForTat[F[_]: Monad](prompt: Prompt[F] with Console[F]) {
-
-  val game = new IPD[F]
+class TitForTat[M[_]](prompt: Prompt[M] with Console[M], val game: IteratedPrisonersDilemma[M])(implicit M: Monad[M]) {
 
   import game.{Context, Player, Pairing, Pairings, initialState, runPairing, buildPlayer, greedy, titForTat}
 
   type Strategy = game.Strategy
 
-  def pure[A](a: A) = implicitly[Monad[F]].pure(a)
-
   val interactive = new Strategy {
-    override def chose(context: Context, player: Player, opponent: PlayerId): F[Action] = {
-      lazy val input: F[Action] =
+    override def chose(context: Context, player: Player, opponent: PlayerId): M[Action] = {
+      lazy val input: M[Action] =
         prompt.prompt(
           s"""
             |
@@ -101,22 +103,14 @@ class TitForTat[F[_]: Monad](prompt: Prompt[F] with Console[F]) {
             | What do you chose to do? (c)ooperate or (d)efect?
           """.stripMargin
         ).flatMap {
-          case "d" => pure(Defect)
-          case "c" => pure(Cooperate)
+          case "d" => M.pure(Defect)
+          case "c" => M.pure(Cooperate)
           case _ => input
         }
 
       input
     }
   }
-
-
-  val distribution =
-    Seq(
-      titForTat -> 4,
-      greedy -> 1,
-      interactive -> 1
-    )
 
   val payoffs: Payoffs = Map(
     (Cooperate, Cooperate) -> (3.0,3.0),
@@ -125,23 +119,23 @@ class TitForTat[F[_]: Monad](prompt: Prompt[F] with Console[F]) {
     (Defect, Defect) -> (1,1)
   )
 
-  def randomPlayers(distribution: Seq[(Strategy, Int)]): Random[Seq[Player]] = State { seed =>
+  def randomPlayers(distribution: Seq[(Strategy, Int)]): Random[Set[Player]] = State { seed =>
 
     val newId = Generator.randomInt.map(PlayerId.apply)
 
     val strategies = distribution.flatMap { case (strategy, number) => List.fill(number)(strategy) }
 
-    val init = (seed, Seq.empty[Player])
+    val init = (seed, Set.empty[Player])
 
     strategies.foldLeft(init){ case ((seed, participants), curr: Strategy) =>
       val (newSeed, id) = newId.run(seed).value
-      (newSeed, participants :+ buildPlayer(id, curr))
+      (newSeed, participants + buildPlayer(id, curr))
     }
   }
 
-  def buildPairings(players: Seq[Player]): Random[Seq[Pairing]] = State { seed: Seed =>
+  def buildPairings(players: Set[Player]): Random[Seq[Pairing]] = State { seed: Seed =>
 
-    val ids = players
+    val ids = players.toSeq
 
     ids.foldLeft((seed, Seq.empty[(Player, Player)])) { case ((seed, pairings), curr) =>
 
@@ -151,18 +145,17 @@ class TitForTat[F[_]: Monad](prompt: Prompt[F] with Console[F]) {
     }
   }
 
-  def randomPairingRounds(rounds: Int)(players: Seq[Player]): Random[Seq[Pairings]] = {
+  def randomPairingRounds(rounds: Int)(players: Set[Player]): Random[Seq[Pairings]] = {
     val randomPairingRounds = Seq.fill(rounds)(players).map(buildPairings)
     Generator.sequence(randomPairingRounds)
   }
 
-  def runGame(distribution: Seq[(Strategy, Int)], rounds: Int): Random[F[Map[PlayerId, Score]]] = {
-    randomPlayers(distribution)
-      .flatMap(randomPairingRounds(rounds))
+  def runGame(players: Set[Player], rounds: Int): Random[M[Map[PlayerId, Score]]] = {
+    randomPairingRounds(rounds)(players)
       .map { pairingRounds =>
         val participants = pairingRounds.flatten.toMap.keys
 
-        val endStateM = pairingRounds.foldLeft(pure(initialState)) { case (state, pairings) =>
+        val endStateM = pairingRounds.foldLeft(M.pure(initialState)) { case (state, pairings) =>
           pairings.foldLeft(state){ case (stateM, pairing) => stateM.flatMap(runPairing(payoffs, _, pairing)) }
         }
 
