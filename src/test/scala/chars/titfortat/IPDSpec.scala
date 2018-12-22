@@ -13,7 +13,7 @@ class IPDSpec extends WordSpec with Matchers with GeneratorDrivenPropertyChecks 
   val tftId = PlayerId(1)
   val defectorId = PlayerId(2)
   val tftPlayer = IPD.buildPlayer(tftId, titForTat)
-  val defectorPlayer = IPD.buildPlayer(defectorId, greedy)
+  val defectorPlayer = IPD.buildPlayer(defectorId, defect)
   val context = buildContext(initialState, payoffs, tftId, defectorId)
 
 

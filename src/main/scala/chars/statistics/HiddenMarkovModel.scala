@@ -2,7 +2,7 @@ package chars.statistics
 
 import java.io.File
 
-import chars.random.Seed
+import chars.random.{RandomGenerator, Seed}
 
 import scala.annotation.tailrec
 
@@ -11,6 +11,8 @@ object HiddenMarkovModel {
   type State = Seq[Char]
   type HiddenMarkovModel = Map[State, Map[State, Int]]
   type Count = Int
+
+  val generator = RandomGenerator
 
   def buildNGramTransitions(n: Int, line: State): Seq[(State, State)] = {
     val transitions = line.sliding(n).foldLeft(List.empty[(State, State)]) {
@@ -57,7 +59,7 @@ object HiddenMarkovModel {
         val char = Seq(current.last)
         val weights: Map[State, Double] = model(char).mapValues(_.toDouble)
         val possibleNexts = weights.keys.toSeq
-        val rand = chars.random.Generator.randomValuesWithWeights(possibleNexts, weights.apply)
+        val rand = generator.randomValuesWithWeights(possibleNexts, weights.apply)
         val (nextSeed, nextChar) = rand.run(seed).value
 
         if (nextChar == Seq('\n')) current

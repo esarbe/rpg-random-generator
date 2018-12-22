@@ -28,12 +28,12 @@ class IteratedPrisonersDilemma[M[_]](implicit M: Monad[M]) extends PrisonersDile
       implicitly[Monad[M]].pure(context.getLastMove(opponent, player.id).getOrElse(Cooperate))
   }
 
-  val greedy = new Strategy {
+  val defect = new Strategy {
     override def toString: String = "greedy"
     override def chose(context: Context, player: Player, opponent: PlayerId): M[Action] = M.pure(Defect)
   }
 
-  val naive = new Strategy {
+  val cooperate = new Strategy {
     override def toString: String = "naive"
     override def chose(context: Context, player: Player, opponent: PlayerId): M[Action] = M.pure(Cooperate)
   }

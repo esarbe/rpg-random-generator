@@ -1,12 +1,12 @@
 package chars.app
 
 import cats.Monad
-import cats.data.State
+import cats.data.{State, StateT}
 import cats.effect.IO
 import cats.implicits._
+import chars.app.TitForTat.RandomIO
 import chars.decline.random.Argument._
 import chars.app.ui.{Console, Prompt, PromptConsoleInterpreter}
-import chars.random.Generator.oneOf
 import chars.random._
 import chars.titfortat.PrisonersDilemma.Action.{Cooperate, Defect}
 import chars.titfortat.PrisonersDilemma.{Action, Payoffs, PlayerId, Score}
@@ -15,11 +15,11 @@ import com.monovore.decline.{CommandApp, Opts}
 
 
 //mvp:
-// - (/) run IPD
-// - (/) run IPD with participants type distribution taken from cmd line
-// - (/) run IPD interactively from cmd line
-// - run IPD interactively from web gui
-// - run IPD interactively concurrently
+// - (/) run IteratedPrisonersDilemma
+// - (/) run IteratedPrisonersDilemma with participants type distribution taken from cmd line
+// - (/) run IteratedPrisonersDilemma interactively from cmd line
+// - run IteratedPrisonersDilemma interactively from web gui
+// - run IteratedPrisonersDilemma interactively concurrently
 // - accounts
 // - scoreboard
 // - UX
@@ -43,15 +43,25 @@ object TitForTat
     (maybeSeed, rounds, numberDefect, numberCooperators, numberOfTitForTat, isInteractiveInput).mapN {
       case (maybeSeed, rounds, numberDefect, numberCooperators, numberOfTitForTat, isInteractive) =>
 
-        val prompt = new PromptConsoleInterpreter[IO](ui.ConsoleInterpreter)
-        val ipd = new IteratedPrisonersDilemma[IO]()
-        val game = new TitForTat(prompt, ipd)
+        val prompt = new PromptConsoleInterpreter[RandomIO](new ui.ConsoleInterpreter[RandomIO])
+        val ipd = new IteratedPrisonersDilemma[RandomIO]()
+
+        val generator = new Generator[RandomIO] {
+          override def next: StateT[IO, Seed, Long] = StateT { seed: Seed =>
+            seed.next[IO].map { next =>
+              (next, seed.value)
+            }
+          }
+        }
+
+
+        val game = new TitForTat(prompt, ipd, generator)
         val seed = maybeSeed.getOrElse(Seed(0l))
         val distribution: Seq[(game.Strategy, Int)] =
           Seq(
             game.game.titForTat -> numberOfTitForTat,
-            game.game.greedy -> numberDefect,
-            game.game.naive -> numberCooperators,
+            game.game.defect -> numberDefect,
+            game.game.cooperate -> numberCooperators,
             game.interactive -> (if (isInteractive.isDefined) 1 else 0))
 
         val endState =
@@ -60,7 +70,7 @@ object TitForTat
             endState <- game.runGame(players, rounds)
           } yield endState
 
-        endState.runA(seed).value.flatMap { scores =>
+        endState.flatMap{ scores =>
 
           val displayScores =
             scores
@@ -78,17 +88,21 @@ object TitForTat
               | ${ if (isInteractive.isDefined) "Thank you for playing." else "" }
 
             """.stripMargin)
-        }.unsafeRunSync()
-
-
+        }.runA(seed).unsafeRunSync()
     }
   }
 
-)
+) {
+  type RandomIO[T] = StateT[IO, Seed, T]
+}
 
-class TitForTat[M[_]](prompt: Prompt[M] with Console[M], val game: IteratedPrisonersDilemma[M])(implicit M: Monad[M]) {
+class TitForTat[M[_]](
+  prompt: Prompt[M] with Console[M],
+  val game: IteratedPrisonersDilemma[M],
+  generator: Generator[M]
+)(implicit M: Monad[M]) {
 
-  import game.{Context, Player, Pairing, Pairings, initialState, runPairing, buildPlayer, greedy, titForTat}
+  import game.{Context, Player, Pairing, Pairings, initialState, runPairing, buildPlayer, defect, titForTat}
 
   type Strategy = game.Strategy
 
@@ -119,40 +133,40 @@ class TitForTat[M[_]](prompt: Prompt[M] with Console[M], val game: IteratedPriso
     (Defect, Defect) -> (1,1)
   )
 
-  def randomPlayers(distribution: Seq[(Strategy, Int)]): Random[Set[Player]] = State { seed =>
-
-    val newId = Generator.randomInt.map(PlayerId.apply)
-
+  def randomPlayers(distribution: Seq[(Strategy, Int)]): M[Set[Player]] = {
+    val newId = generator.randomInt.map(PlayerId.apply)
     val strategies = distribution.flatMap { case (strategy, number) => List.fill(number)(strategy) }
+    val init = M.pure(Set.empty[Player])
 
-    val init = (seed, Set.empty[Player])
-
-    strategies.foldLeft(init){ case ((seed, participants), curr: Strategy) =>
-      val (newSeed, id) = newId.run(seed).value
-      (newSeed, participants + buildPlayer(id, curr))
+    strategies.foldLeft(init) { case (acc, curr) =>
+      for {
+        participants <- acc
+        id <- newId
+        player = buildPlayer(id, curr)
+      } yield participants + player
     }
   }
 
-  def buildPairings(players: Set[Player]): Random[Seq[Pairing]] = State { seed: Seed =>
 
+  def buildPairings(players: Set[Player]): M[Seq[Pairing]] = {
     val ids = players.toSeq
-
-    ids.foldLeft((seed, Seq.empty[(Player, Player)])) { case ((seed, pairings), curr) =>
-
-      val (newSeed, opponent) = oneOf(ids.filterNot(_ == curr):_*).run(seed).value
-
-      (newSeed, pairings :+ (curr, opponent))
+    ids.foldLeft(M.pure(Seq.empty[Pairing])) { case (acc, curr) =>
+      for {
+        pairings <- acc
+        opponent <- generator.oneOf(ids.filterNot(_ == curr):_*)
+      } yield pairings :+ (curr, opponent)
     }
   }
 
-  def randomPairingRounds(rounds: Int)(players: Set[Player]): Random[Seq[Pairings]] = {
+
+  def randomPairingRounds(rounds: Int)(players: Set[Player]): M[Seq[Pairings]] = {
     val randomPairingRounds = Seq.fill(rounds)(players).map(buildPairings)
-    Generator.sequence(randomPairingRounds)
+    randomPairingRounds.toList.sequence.map(_.toSeq)
   }
 
-  def runGame(players: Set[Player], rounds: Int): Random[M[Map[PlayerId, Score]]] = {
+  def runGame(players: Set[Player], rounds: Int): M[Map[PlayerId, Score]] = {
     randomPairingRounds(rounds)(players)
-      .map { pairingRounds =>
+      .flatMap { pairingRounds =>
         val participants = pairingRounds.flatten.toMap.keys
 
         val endStateM = pairingRounds.foldLeft(M.pure(initialState)) { case (state, pairings) =>

@@ -1,7 +1,7 @@
 package chars.app.ui
 
 import cats.effect._
-import cats.{FlatMap, Monad}
+import cats.{Applicative, FlatMap, Monad}
 import enumeratum.{Enum, EnumEntry}
 
 trait Console[F[_]] {
@@ -15,12 +15,12 @@ trait Prompt[F[_]] {
 }
 
 
-object ConsoleInterpreter extends Console[IO]{
-  override def readLine: IO[String] =
-    IO { scala.io.StdIn.readLine() }
+class ConsoleInterpreter[F[_]](implicit F: Applicative[F]) extends Console[F]{
+  override def readLine: F[String] =
+    F.pure(scala.io.StdIn.readLine())
 
-  override def printLine(s: String): IO[Unit] =
-    IO { Console.println(s) }
+  override def printLine(s: String): F[Unit] =
+    F.pure(Console.println(s))
 }
 
 

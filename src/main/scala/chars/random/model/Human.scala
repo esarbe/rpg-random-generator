@@ -1,22 +1,18 @@
 package chars.random.model
 
-import cats.Eval
-import cats.data.IndexedStateT
-import chars.random.{Generator, Random}
+import cats.Monad
 import chars.model._
-import chars.model.human.face.Eyes.SameEyes
-import chars.model.human.{Age, Head}
 import chars.model.human.face.{Eye, Eyes}
-import chars.random
+import chars.model.human.{Age, Head}
+import chars.random.Generator
 
-object Human {
+class Human[M[_]: Monad](generator: Generator[M]) {
 
   import cats.implicits._
-  import chars.random.Generator._
 
-  val randomValueCategory = randomEnum[chars.model.CategorizedValue]
+  val randomValueCategory = generator.randomEnum[chars.model.CategorizedValue]
 
-  val randomEyeColor = randomEnumWithWeights[human.face.eye.Color] {
+  val randomEyeColor = generator.randomEnumWithWeights[human.face.eye.Color] {
     case human.face.eye.Color.Brown => 7
     case human.face.eye.Color.Blue => 1
     case human.face.eye.Color.Hazel => 0.5
@@ -24,11 +20,11 @@ object Human {
     case human.face.eye.Color.Grey => 0.1
   }
 
-  val randomAge = randomDouble.map(i => Age(i * 120 + 14))
+  val randomAge = generator.randomDouble.map(i => Age(i * 120 + 14))
 
-  val randomBodyHeight: Random[body.Height] = randomValueCategory.map(body.Height)
-  val randomBodyWeight: Random[body.Weight] = randomValueCategory.map(body.Weight)
-  val randomAthleticism: Random[body.Athleticism] = randomValueCategory.map(body.Athleticism)
+  val randomBodyHeight: M[body.Height] = randomValueCategory.map(body.Height)
+  val randomBodyWeight: M[body.Weight] = randomValueCategory.map(body.Weight)
+  val randomAthleticism: M[body.Athleticism] = randomValueCategory.map(body.Athleticism)
   val randomBody = for {
     height <- randomBodyHeight
     weight <- randomBodyWeight
@@ -36,22 +32,22 @@ object Human {
   } yield Body(height, weight, athleticism)
 
 
-  val randomFaceShape = randomEnum[human.face.Shape]
-  val randomEyeShape = randomEnum[human.face.eye.Shape]
+  val randomFaceShape = generator.randomEnum[human.face.Shape]
+  val randomEyeShape = generator.randomEnum[human.face.eye.Shape]
 
-  val randomEye: Random[Eye] =
+  val randomEye: M[Eye] =
     for {
       eyeColor <- randomEyeColor
       eyeShape <- randomEyeShape
     } yield human.face.Eye(eyeColor, eyeShape)
 
-  val randomSameEyes: Random[Eyes] =
+  val randomSameEyes: M[Eyes] =
     for {
       eye <- randomEye
     } yield human.face.Eyes.SameEyes(eye)
 
 
-  val randomDifferentEyes: Random[Eyes] =
+  val randomDifferentEyes: M[Eyes] =
     for {
       leftEye <- randomEye
       rightEye <- randomEye
@@ -59,7 +55,7 @@ object Human {
 
 
   val randomEyes =
-    Generator.oneOf[Random[Eyes]](randomDifferentEyes, randomSameEyes).flatten
+    generator.oneOf[M[Eyes]](randomDifferentEyes, randomSameEyes).flatten
 
   val randomFace =
     for {
@@ -73,7 +69,7 @@ object Human {
       size <- randomValueCategory
     } yield human.Head(face, size)
 
-  val randomSex = randomEnumWithWeights[Sex] {
+  val randomSex = generator.randomEnumWithWeights[Sex] {
     case Sex.Male => 1.1
     case Sex.Female => 0.9
     case Sex.Indeterminate => 0.1
@@ -87,11 +83,11 @@ object Human {
   } yield chars.model.Human(sex, age, body, head)
 
   def buildGenerator(
-      randomSex: Random[Sex] = randomSex,
-      randomAge: Random[Age] = randomAge,
-      randomBody: Random[Body] = randomBody,
-      randomHead: Random[Head] = randomHead
-  ) : Random[Human] =
+      randomSex: M[Sex] = randomSex,
+      randomAge: M[Age] = randomAge,
+      randomBody: M[Body] = randomBody,
+      randomHead: M[Head] = randomHead
+  ): M[chars.model.Human] =
     for {
       sex <- randomSex
       age <- randomAge

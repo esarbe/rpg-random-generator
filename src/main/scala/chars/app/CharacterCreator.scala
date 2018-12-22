@@ -1,17 +1,15 @@
 package chars.app
 
+import cats.Id
+import cats.data.State
 import cats.effect.IO
 import cats.implicits._
 import chars.app.CharacterCreator.Input.GeneratorActionRequested
-import chars.app.text.PersonDescriptionBuilder
 import chars.app.ui.{PromptConsoleInterpreter, TextInterface}
 import chars.model._
-import chars.random.model.Human
-import chars.random.{Generator, Random}
-import chars.text.DescriptionPrinter
+import chars.random.{Generator, Random, RandomGenerator}
 import enumeratum._
 
-import scala.annotation.tailrec
 import scala.collection.immutable
 import scala.io.Source
 import scala.util.Try
@@ -31,8 +29,8 @@ object CharacterCreator {
     override def values: immutable.IndexedSeq[Input] = findValues
   }
 
-
-  val prompt = new PromptConsoleInterpreter[IO](ui.ConsoleInterpreter)
+  val prompt = new PromptConsoleInterpreter[IO](new ui.ConsoleInterpreter)
+  val generator = RandomGenerator
 
   val sexPrompt: IO[Sex] = TextInterface.selectEnumPrompt(Sex, prompt)
   val culturePrompt = TextInterface.selectEnumPrompt(Culture, prompt)
@@ -59,14 +57,15 @@ object CharacterCreator {
     maybeSex: Option[Sex],
     maybeCulture: Option[Culture]
   ): Random[Person] = {
-    val sexGen = maybeSex.map(s => Generator.constant(s)).getOrElse(Generator.oneOf(Sex.Female, Sex.Male))
-    val cultureGen = maybeCulture.map(c => Generator.constant(c)).getOrElse(Generator.oneOf(Culture.values:_*))
+    val sexGen = maybeSex.map(s => generator.constant(s)).getOrElse(generator.oneOf(Sex.Female, Sex.Male))
+    val cultureGen = maybeCulture.map(c => generator.constant(c)).getOrElse(generator.oneOf(Culture.values:_*))
+    val humanGen = new chars.random.model.Human[Random](generator)
 
     for {
       sex <- sexGen
       culture <- cultureGen
       name <- buildNameGenerator(sex, culture)
-      human <- Human.buildGenerator(Generator.constant(sex))
+      human <- humanGen.buildGenerator(generator.constant(sex))
     } yield Person(name, human)
   }
 
@@ -81,16 +80,13 @@ object CharacterCreator {
         .toOption
         .getOrElse(sys.error(s"resource ${culture.entryName}-$sex.txt not found"))
 
-    Generator.oneOf(names:_*)
+    generator.oneOf(names:_*)
   }
 
 
   def sexGenerator(maybeSex: Option[Sex]): Random[Sex] =
     maybeSex
       .filter(Set[Sex](Sex.Male, Sex.Female).contains)
-      .map(s => Generator.constant(s))
-      .getOrElse(Generator.oneOf(Sex.Male, Sex.Female))
-
-
-  import ui.ConsoleInterpreter._
+      .map(s => generator.constant(s))
+      .getOrElse(generator.oneOf(Sex.Male, Sex.Female))
 }

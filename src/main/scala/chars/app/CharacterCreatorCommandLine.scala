@@ -14,8 +14,8 @@ import com.monovore.decline.{CommandApp, Opts, _}
 
 
 object CharacterCreatorCommandLine extends {
-
-  val prompt = new PromptConsoleInterpreter[IO](ui.ConsoleInterpreter)
+  val generator = RandomGenerator
+  val prompt = new PromptConsoleInterpreter[IO](new ui.ConsoleInterpreter)
   implicit val sexArgument: Argument[Sex] = enumArgument(Sex)
   implicit val cultureArgument: Argument[Culture] = enumArgument(Culture)
 
