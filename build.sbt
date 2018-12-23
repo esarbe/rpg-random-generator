@@ -2,7 +2,13 @@ name := "RPG Character Generator"
 
 scalacOptions += "-Ypartial-unification"
 
+val httpsVersion = "0.18.21"
+
 addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)
+
+addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.6")
+
+addCompilerPlugin("com.olegpy" %% "better-monadic-for"  % "0.2.4")
 
 enablePlugins(JavaAppPackaging)
 
@@ -24,6 +30,11 @@ libraryDependencies += "com.github.mpilquist" %% "simulacrum" % "0.10.0"
 
 libraryDependencies += "io.estatico" %% "newtype" % "0.4.2"
 
+libraryDependencies ++= Seq(
+  "org.http4s"%% "http4s-blaze-server" % httpsVersion,
+  "org.http4s" %% "http4s-circe" % httpsVersion,
+  "org.http4s" %% "http4s-dsl" % httpsVersion
+)
 
 version := "0.0.1-SNAPSHOT"
 

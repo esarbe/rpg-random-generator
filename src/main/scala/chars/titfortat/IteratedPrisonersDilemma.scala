@@ -1,16 +1,18 @@
 package chars.titfortat
 
-import cats.Monad
+import cats.{Applicative, Monad}
 import chars.titfortat.PrisonersDilemma.Action.{Cooperate, Defect}
 import chars.titfortat.PrisonersDilemma._
-import chars.titfortat.{LastMoveMemory, PayoffKnowledge, PrisonersDilemma, ScoreKnowledge}
 import cats.implicits._
 
-class IteratedPrisonersDilemma[M[_]](implicit M: Monad[M]) extends PrisonersDilemma[M] with LastMoveMemory with PayoffKnowledge with ScoreKnowledge {
+class IteratedPrisonersDilemma[A[_]](implicit A: Applicative[A])
+  extends PrisonersDilemma[A]
+     with LastMoveMemory
+     with PayoffKnowledge
+     with ScoreKnowledge {
 
   type Player = PlayerImp
   case class PlayerImp(id: PlayerId, strategy: Strategy)
-
 
   type State = StateImp
   case class StateImp(history: Map[(PlayerId, PlayerId), Action], scores: Map[PlayerId, Score]) extends StateLike {
@@ -24,18 +26,18 @@ class IteratedPrisonersDilemma[M[_]](implicit M: Monad[M]) extends PrisonersDile
 
   val titForTat = new Strategy {
     override def toString: String = "tft"
-    override def chose(context: Context, player: Player, opponent: PlayerId): M[Action] =
-      implicitly[Monad[M]].pure(context.getLastMove(opponent, player.id).getOrElse(Cooperate))
+    override def chose(context: Context, player: Player, opponent: PlayerId): A[Action] =
+      A.pure(context.getLastMove(opponent, player.id).getOrElse(Cooperate))
   }
 
   val defect = new Strategy {
-    override def toString: String = "greedy"
-    override def chose(context: Context, player: Player, opponent: PlayerId): M[Action] = M.pure(Defect)
+    override def toString: String = "defect"
+    override def chose(context: Context, player: Player, opponent: PlayerId): A[Action] = A.pure(Defect)
   }
 
   val cooperate = new Strategy {
-    override def toString: String = "naive"
-    override def chose(context: Context, player: Player, opponent: PlayerId): M[Action] = M.pure(Cooperate)
+    override def toString: String = "cooperate"
+    override def chose(context: Context, player: Player, opponent: PlayerId): A[Action] = A.pure(Cooperate)
   }
 
 
@@ -53,7 +55,7 @@ class IteratedPrisonersDilemma[M[_]](implicit M: Monad[M]) extends PrisonersDile
   def buildContext(state: State, payoffs: Payoffs, player: PlayerId, opponent: PlayerId): Context =
     ContextImp(state, payoffs)
 
-  def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): M[State] = {
+  def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): A[State] = {
 
     val (left, right) = pairing
     evaluate(payoffs, state)(left, right)
@@ -62,23 +64,38 @@ class IteratedPrisonersDilemma[M[_]](implicit M: Monad[M]) extends PrisonersDile
       }
   }
 
-  def evaluate(payoffs: Payoffs, state: State)(left: Player, right: Player): M[Seq[Outcome]] = {
-
-    def action(player: Player, other: PlayerId): M[Action] = {
+  def evaluate(payoffs: Payoffs, state: State)(left: Player, right: Player): A[Seq[Outcome]] = {
+    def action(player: Player, other: PlayerId): A[Action] = {
       val context = buildContext(state, payoffs, player.id, other)
       player.strategy.chose(context, player, other)
     }
 
-    for {
-      leftAction <- action(left, right.id)
-      rightAction <- action(right, left.id)
-    } yield {
-      val (leftPayoff, rightPayoff) = payoffs((leftAction, rightAction))
+    (action(left, right.id), action(right, left.id)).mapN {
+      (leftAction, rightAction) =>
+        val (leftPayoff, rightPayoff) = payoffs((leftAction, rightAction))
 
-      Seq(
-        Outcome(left.id, right.id, leftAction, leftPayoff),
-        Outcome(right.id, left.id, rightAction, rightPayoff)
-      )
+        Seq(
+          Outcome(left.id, right.id, leftAction, leftPayoff),
+          Outcome(right.id, left.id, rightAction, rightPayoff)
+        )
     }
+  }
+}
+
+trait LastMoveMemory extends GameContextCapability {
+  trait LastMoveContext extends ContextLike {
+    def getLastMove(player: PlayerId, opponent: PlayerId): Option[Action]
+  }
+}
+
+trait ScoreKnowledge extends GameContextCapability {
+  trait ScoreContext extends ContextLike {
+    def getScore(player: PlayerId): Score
+  }
+}
+
+trait PayoffKnowledge extends GameContextCapability {
+  trait PayoffContext extends ContextLike {
+    def getPayoffs: Payoffs
   }
 }

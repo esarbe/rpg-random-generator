@@ -6,30 +6,14 @@ import chars.titfortat.PrisonersDilemma.Action.{Cooperate, Defect}
 import chars.titfortat.PrisonersDilemma.{Action, Outcome, Payoffs, PlayerId, Score}
 import io.estatico.newtype.macros.newtype
 
-trait LastMoveMemory extends GameContextCapability {
-  trait LastMoveContext extends ContextLike {
-    def getLastMove(player: PlayerId, opponent: PlayerId): Option[Action]
-  }
-}
-
-trait ScoreKnowledge extends GameContextCapability {
-  trait ScoreContext extends ContextLike {
-    def getScore(player: PlayerId): Score
-  }
-}
-
-trait PayoffKnowledge extends GameContextCapability {
-  trait PayoffContext extends ContextLike {
-    def getPayoffs: Payoffs
-  }
-}
-
 trait GameContextCapability {
   type Context <: ContextLike
   trait ContextLike
 }
 
-trait PrisonersDilemma[F[_]] extends GameContextCapability {
+trait PrisonersDilemma[F[_]] {
+  self: GameContextCapability =>
+
   type Pairings = Seq[Pairing]
   type Pairing = (Player, Player)
   type Player
@@ -46,8 +30,6 @@ trait PrisonersDilemma[F[_]] extends GameContextCapability {
   def buildContext(state: State, payoffs: Payoffs, player: PlayerId, opponent: PlayerId): Context
   def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): F[State]
 }
-
-
 
 
 object PrisonersDilemma {
