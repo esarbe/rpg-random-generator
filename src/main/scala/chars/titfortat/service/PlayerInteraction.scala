@@ -3,6 +3,6 @@ package service
 
 import PrisonersDilemma.{Action, PlayerId}
 
-trait PlayerInteraction[F[_], C] {
-  def askUser(playerId: PlayerId, context: C): F[Action]
+trait PlayerInteraction[F[_]] {
+  def askForUserAction(playerId: PlayerId, context: IteratedPrisonersDilemma[F]#Context): F[Action]
 }

@@ -1,6 +1,6 @@
 package chars.titfortat
 
-import cats.{Applicative, Monad}
+import cats.Applicative
 import chars.titfortat.PrisonersDilemma.Action.{Cooperate, Defect}
 import chars.titfortat.PrisonersDilemma._
 import cats.implicits._
@@ -9,7 +9,8 @@ class IteratedPrisonersDilemma[A[_]](implicit A: Applicative[A])
   extends PrisonersDilemma[A]
      with LastMoveMemory
      with PayoffKnowledge
-     with ScoreKnowledge {
+     with ScoreKnowledge
+     with OpponentKnowledge {
 
   type Player = PlayerImp
   case class PlayerImp(id: PlayerId, strategy: Strategy)
@@ -41,19 +42,23 @@ class IteratedPrisonersDilemma[A[_]](implicit A: Applicative[A])
   }
 
 
-
   type Context = ContextImp
-  case class ContextImp(state: State, payoffs: Payoffs) extends LastMoveContext with PayoffContext with ScoreContext {
+  case class ContextImp(state: State, opponent: PlayerId, payoffs: Payoffs)
+      extends LastMoveContext
+      with PayoffContext
+      with ScoreContext
+      with OpponentContext {
     override def getLastMove(player: PlayerId, opponent: PlayerId): Option[Action] = state.history.get((player, opponent))
     override def getPayoffs: Payoffs = payoffs
     override def getScore(player: PlayerId): Score = state.scores.getOrElse(player, 0l)
+    override def getOpponent: PlayerId = opponent
   }
 
   override def buildPlayer(id: PlayerId, strategy: Strategy): PlayerImp =
     PlayerImp(id, strategy)
 
   def buildContext(state: State, payoffs: Payoffs, player: PlayerId, opponent: PlayerId): Context =
-    ContextImp(state, payoffs)
+    ContextImp(state, opponent, payoffs)
 
   def runPairing(payoffs: Payoffs, state: State, pairing: Pairing): A[State] = {
 
@@ -91,6 +96,12 @@ trait LastMoveMemory extends GameContextCapability {
 trait ScoreKnowledge extends GameContextCapability {
   trait ScoreContext extends ContextLike {
     def getScore(player: PlayerId): Score
+  }
+}
+
+trait OpponentKnowledge extends GameContextCapability {
+  trait OpponentContext extends ContextLike {
+    def getOpponent: PlayerId
   }
 }
 

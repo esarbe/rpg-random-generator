@@ -45,6 +45,3 @@ object CharacterCreatorCommandLine extends {
     }
   }
 )
-
-
-

@@ -10,6 +10,7 @@ import chars.decline.random.Argument._
 import chars.random._
 import chars.titfortat.PrisonersDilemma.Action.{Cooperate, Defect}
 import chars.titfortat.PrisonersDilemma.{Action, Payoffs, PlayerId, Score}
+import chars.titfortat.service.PlayerInteraction
 import com.monovore.decline.Opts
 
 object TitForTat {
@@ -30,9 +31,30 @@ object TitForTat {
     numberCooperators: Int,
     numberOfTitForTat: Int,
     isInteractive: Option[Unit]
-  ): Unit = {
+  )(implicit M: Monad[RandomIO]): Unit = {
+
     val prompt = new PromptConsoleInterpreter[RandomIO](new ui.ConsoleInterpreter[RandomIO])
     val ipd = new IteratedPrisonersDilemma[RandomIO]()
+
+    val playerInteraction = new PlayerInteraction[RandomIO] {
+      override def askForUserAction(playerId: PlayerId, context: IteratedPrisonersDilemma[RandomIO]#ContextImp): RandomIO[Action] = {
+        lazy val input: RandomIO[Action] =
+          prompt.prompt(
+            s"""
+               |
+            | You play against player ${context.opponent}. This player's last move was to ${context.getLastMove(playerId, context.opponent)}
+               | Your score is ${context.getScore(playerId)}. Your opponent's score is ${context.getScore(context.opponent)}
+               | What do you chose to do? (c)ooperate or (d)efect?
+          """.stripMargin
+          ).flatMap {
+            case "d" => M.pure(Defect)
+            case "c" => M.pure(Cooperate)
+            case _ => input
+          }
+
+        input
+      }
+    }
 
     val generator = new Generator[RandomIO] {
       override def next: StateT[IO, Seed, Long] = StateT { seed: Seed =>
@@ -42,7 +64,7 @@ object TitForTat {
       }
     }
 
-    val game = new TitForTat(prompt, ipd, generator)
+    val game = new TitForTat(prompt, ipd, generator, playerInteraction)
     val seed = maybeSeed.getOrElse(Seed(0l))
 
     val distribution =
@@ -90,7 +112,8 @@ object TitForTat {
 class TitForTat[M[_]](
   prompt: Prompt[M] with Console[M],
   val game: IteratedPrisonersDilemma[M],
-  generator: Generator[M]
+  generator: Generator[M],
+  interaction: PlayerInteraction[M]
 )(implicit M: Monad[M]) {
 
   import game._
@@ -98,23 +121,8 @@ class TitForTat[M[_]](
   type Strategy = game.Strategy
 
   val interactive = new Strategy {
-    override def chose(context: Context, player: Player, opponent: PlayerId): M[Action] = {
-      lazy val input: M[Action] =
-        prompt.prompt(
-          s"""
-            |
-            | You play against player $opponent. This player's last move was to ${context.getLastMove(player.id, opponent)}
-            | Your score is ${context.getScore(player.id)}. Your opponent's score is ${context.getScore(opponent)}
-            | What do you chose to do? (c)ooperate or (d)efect?
-          """.stripMargin
-        ).flatMap {
-          case "d" => M.pure(Defect)
-          case "c" => M.pure(Cooperate)
-          case _ => input
-        }
-
-      input
-    }
+    override def chose(context: Context, player: Player, opponent: PlayerId): M[Action] =
+      interaction.askForUserAction(player.id, context)
   }
 
   val payoffs: Payoffs = Map(
@@ -150,13 +158,20 @@ class TitForTat[M[_]](
   }
 
 
-  def randomPairingRounds(rounds: Int)(players: Set[Player]): M[Seq[Pairings]] = {
-    val randomPairingRounds = Seq.fill(rounds)(players).map(buildPairings)
-    randomPairingRounds.toList.sequence.map(_.toSeq)
+  def buildRoundsPairings(rounds: Int)(players: Set[Player]): M[Seq[Pairings]] = {
+    val roundsWithPlayers = Seq.fill(rounds)(players)
+
+    roundsWithPlayers.foldLeft(M.point(Seq.empty[Pairings])) { case (acc, curr) =>
+      for {
+        pairingRounds <- acc
+        newPairing <- buildPairings(curr)
+      } yield pairingRounds :+ newPairing
+    }
   }
 
+
   def runGame(players: Set[Player], rounds: Int): M[Map[PlayerId, Score]] = {
-    randomPairingRounds(rounds)(players)
+    buildRoundsPairings(rounds)(players)
       .flatMap { pairingRounds =>
         val participants = pairingRounds.flatten.toMap.keys
 
