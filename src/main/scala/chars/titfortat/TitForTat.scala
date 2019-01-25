@@ -132,42 +132,29 @@ class TitForTat[M[_]](
     (Defect, Defect) -> (1,1)
   )
 
-  def randomPlayers(distribution: Seq[(Strategy, Int)]): M[Set[Player]] = {
-    val newId = generator.randomInt.map(PlayerId.apply)
+  def buildPlayers(distribution: Seq[(Strategy, Int)]): M[Set[Player]] = {
     val strategies = distribution.flatMap { case (strategy, number) => List.fill(number)(strategy) }
-    val init = M.pure(Set.empty[Player])
 
-    strategies.foldLeft(init) { case (acc, curr) =>
-      for {
-        participants <- acc
-        id <- newId
-        player = buildPlayer(id, curr)
-      } yield participants + player
-    }
+    strategies
+      .toList
+      .traverse(i => generator.nextInt.map(PlayerId.apply).map(buildPlayer(_, i)))
+      .map(_.toSet)
   }
 
 
   def buildPairings(players: Set[Player]): M[Seq[Pairing]] = {
-    val ids = players.toSeq
-    ids.foldLeft(M.pure(Seq.empty[Pairing])) { case (acc, curr) =>
-      for {
-        pairings <- acc
-        opponent <- generator.oneOf(ids.filterNot(_ == curr):_*)
-      } yield pairings :+ (curr, opponent)
-    }
+
+    val ids = players.toList
+
+    ids.traverse { id =>
+        val opponent = generator.oneOf(ids.filterNot(_ == id):_*)
+        opponent.map((id, _))
+    }.map(_.toSeq)
   }
 
 
-  def buildRoundsPairings(rounds: Int)(players: Set[Player]): M[Seq[Pairings]] = {
-    val roundsWithPlayers = Seq.fill(rounds)(players)
-
-    roundsWithPlayers.foldLeft(M.point(Seq.empty[Pairings])) { case (acc, curr) =>
-      for {
-        pairingRounds <- acc
-        newPairing <- buildPairings(curr)
-      } yield pairingRounds :+ newPairing
-    }
-  }
+  def buildRoundsPairings(rounds: Int)(players: Set[Player]): M[Seq[Pairings]] =
+    List.fill(rounds)(players).traverse(buildPairings).map(_.toSeq)
 
 
   def runGame(players: Set[Player], rounds: Int): M[Map[PlayerId, Score]] = {
