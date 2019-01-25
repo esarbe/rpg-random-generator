@@ -1,9 +1,9 @@
 package chars.titfortat
 
-import cats.Monad
+import cats._
 import cats.data.StateT
-import cats.effect.IO
 import cats.implicits._
+import cats.effect.IO
 import chars.app.ui
 import chars.app.ui.{Console, Prompt, PromptConsoleInterpreter}
 import chars.decline.random.Argument._
@@ -42,7 +42,7 @@ object TitForTat {
           prompt.prompt(
             s"""
                |
-            | You play against player ${context.opponent}. This player's last move was to ${context.getLastMove(playerId, context.opponent)}
+               | You play against player ${context.opponent}. This player's last move was to ${context.getLastMove(playerId, context.opponent)}
                | Your score is ${context.getScore(playerId)}. Your opponent's score is ${context.getScore(context.opponent)}
                | What do you chose to do? (c)ooperate or (d)efect?
           """.stripMargin
@@ -77,7 +77,8 @@ object TitForTat {
 
     val endState =
       for {
-        players <- game.randomPlayers(distribution)
+        _ <- prompt.printLine(s"Seed is $seed")
+        players <- game.buildPlayers(distribution)
         scores <- game.runGame(players, rounds)
       } yield {
 
