@@ -20,7 +20,7 @@ object Generator {
   implicit class GeneratorOps[F[_]: Monad](generator: Generator[F]) {
     def next(bits: Int): F[Int] = generator.next.map(long => (long >>> 48 - bits).toInt)
 
-    def randomInt: F[Int] = next(32)
+    def nextInt: F[Int] = next(32)
 
     val randomLong: F[Long] = for {
       a <- next(32)
@@ -45,7 +45,7 @@ object Generator {
 
     def oneOf[T](values: T*): F[T] =
       for {
-        rand <- randomInt
+        rand <- nextInt
         index = Math.abs(rand) % values.length
       } yield values.apply(index)
 
