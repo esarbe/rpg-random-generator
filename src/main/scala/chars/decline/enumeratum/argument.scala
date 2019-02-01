@@ -5,7 +5,7 @@ import enumeratum.{Enum, EnumEntry}
 import cats.implicits._
 import com.monovore.decline
 
-object Argument {
+object argument {
 
   def enumArgument[E <: EnumEntry](e: Enum[E]): decline.Argument[E] = new decline.Argument[E] {
     override def read(string: String): ValidatedNel[String, E] =

@@ -4,8 +4,8 @@ import cats.effect.IO
 import cats.implicits._
 import chars.app.text.PersonDescriptionBuilder
 import chars.app.ui.PromptConsoleInterpreter
-import chars.decline.enumeratum.Argument._
-import chars.decline.random.Argument._
+import chars.decline.enumeratum.argument._
+import chars.decline.random.argument._
 import chars.model.{Culture, Person, Sex}
 import chars.random._
 import chars.text.DescriptionBuilder.DescriptionBuilderOps

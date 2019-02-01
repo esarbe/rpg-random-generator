@@ -1,7 +1,6 @@
 package chars
 
-import io.estatico.newtype.macros.newtype
-import _root_.cats.data.{State, StateT}
+import _root_.cats.data.State
 import _root_.cats.Applicative
 
 package object random {

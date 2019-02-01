@@ -8,7 +8,7 @@ import cats.implicits._
 
 import scala.util.Try
 
-object Argument {
+object argument {
   implicit val seedArgument: Argument[Seed] = new Argument[Seed] {
     override def read(string: String): ValidatedNel[String, Seed] =
       Try(string.toLong)

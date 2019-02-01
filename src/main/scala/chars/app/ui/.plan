@@ -1,0 +1,11 @@
+//mvp:
+// - (/) run IteratedPrisonersDilemma
+// - (/) run IteratedPrisonersDilemma with participants type distribution taken from cmd line
+// - (/) run IteratedPrisonersDilemma interactively from cmd line
+// - (/) run IteratedPrisonersDilemma interactively from web gui
+// - run IteratedPrisonersDilemma interactively concurrently
+// - accounts
+// - scoreboard
+// - UX
+// - context features
+// - player traits
