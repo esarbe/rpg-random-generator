@@ -127,7 +127,7 @@ object TitForTatWebservice extends StreamApp[IO] {
   ): fs2.Stream[IO, StreamApp.ExitCode] = {
     endState.runA(Seed(100)).unsafeToFuture()
     BlazeBuilder[IO]
-      .bindHttp(8080, "10.0.0.64")
+      .bindHttp(80, "0.0.0.0")
       .mountService(playerService, "/")
       .serve
   }
