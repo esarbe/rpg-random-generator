@@ -1,9 +1,6 @@
 package chars.titfortat
 
-import cats.{Id, Monad}
-import cats.implicits._
-import chars.titfortat.PrisonersDilemma.Action.{Cooperate, Defect}
-import chars.titfortat.PrisonersDilemma.{Action, Outcome, Payoffs, PlayerId, Score}
+import chars.titfortat.PrisonersDilemma.{Action, Payoffs, PlayerId}
 import io.estatico.newtype.macros.newtype
 
 trait GameContextCapability {

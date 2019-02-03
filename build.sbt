@@ -30,6 +30,9 @@ libraryDependencies += "com.github.mpilquist" %% "simulacrum" % "0.10.0"
 
 libraryDependencies += "io.estatico" %% "newtype" % "0.4.2"
 
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "0.9.24"
+
+
 libraryDependencies ++= Seq(
   "org.http4s"%% "http4s-blaze-server" % httpsVersion,
   "org.http4s" %% "http4s-circe" % httpsVersion,
