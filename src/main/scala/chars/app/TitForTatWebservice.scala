@@ -16,6 +16,7 @@ import org.http4s.headers.Location
 import org.http4s.server.blaze.BlazeBuilder
 
 import scala.concurrent.Promise
+import scala.sys.SystemProperties
 import scala.util.Success
 
 
@@ -127,7 +128,7 @@ object TitForTatWebservice extends StreamApp[IO] {
   ): fs2.Stream[IO, StreamApp.ExitCode] = {
     endState.runA(Seed(100)).unsafeToFuture()
     BlazeBuilder[IO]
-      .bindHttp(80, "0.0.0.0")
+      .bindHttp(Option(System.getenv("PORT")).map(Integer.parseInt).getOrElse(sys.error("no port set")), "0.0.0.0")
       .mountService(playerService, "/")
       .serve
   }
