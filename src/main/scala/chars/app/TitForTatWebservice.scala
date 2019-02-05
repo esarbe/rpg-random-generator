@@ -9,14 +9,13 @@ import chars.titfortat.PrisonersDilemma.Action
 import chars.titfortat.service.PlayerInteraction
 import chars.titfortat.{IteratedPrisonersDilemma, PrisonersDilemma, TitForTat}
 import fs2.StreamApp
-import org.http4s.{HttpService, MediaRange, MediaType, Uri, headers}
 import org.http4s.dsl.impl.Root
 import org.http4s.dsl.io._
 import org.http4s.headers.Location
 import org.http4s.server.blaze.BlazeBuilder
+import org.http4s.{HttpService, MediaType, Uri, headers}
 
 import scala.concurrent.Promise
-import scala.sys.SystemProperties
 import scala.util.Success
 
 
