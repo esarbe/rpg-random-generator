@@ -1,8 +1,8 @@
 import sbt.Keys.version
-import sbt.{addCompilerPlugin, enablePlugins}
+import sbt.addCompilerPlugin
 
 val root =
-  (project in file("."))
+  (project in file("core"))
     .settings(
       name := "RPG Character Generator",
       scalacOptions += "-Ypartial-unification",
