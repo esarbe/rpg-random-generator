@@ -1,7 +1,6 @@
 package chars.titfortat
 
 import chars.titfortat.PrisonersDilemma.{Action, Payoffs, PlayerId}
-import io.estatico.newtype.macros.newtype
 
 trait GameContextCapability {
   type Context <: ContextLike
@@ -32,7 +31,7 @@ trait PrisonersDilemma[F[_]] {
 object PrisonersDilemma {
   type Score = Double
   type Payoff = Double
-  @newtype case class PlayerId(id: Int)
+  case class PlayerId(id: Int)
   case class Outcome(player: PlayerId, opponent: PlayerId, action: Action, payoff: Payoff)
 
   sealed trait Action
