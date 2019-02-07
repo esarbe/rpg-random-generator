@@ -7,9 +7,6 @@ object Settings {
 
   val common =
     Seq(
-      organization := "org.esarbe",
-      version := "0.0.1-SNAPSHOT",
-      name := "RPG Character Generator",
       scalacOptions += "-Ypartial-unification",
       scalaVersion := "2.12.4",
       addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full),

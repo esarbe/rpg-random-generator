@@ -25,5 +25,11 @@ lazy val web =
 
 val root =
   (project in file("."))
+    .settings(
+      organization := "org.esarbe",
+      version := "0.0.1-SNAPSHOT",
+      name := "chars",
+      mainClass in Compile := Some("chars.app.TitForTatWebservice")
+    )
+    .dependsOn(core, services, web)
     .enablePlugins(JavaAppPackaging)
-    .aggregate(core, services, web)
